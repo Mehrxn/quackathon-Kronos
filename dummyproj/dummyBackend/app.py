@@ -76,6 +76,16 @@ ERROR_COUNTER = Counter(
     ['error_type']
 )
 
+SYSTEM_MEMORY_USAGE = Gauge(
+    'ai_agent_memory_usage_bytes',
+    'Simulated RAM usage in bytes'
+)
+
+SYSTEM_CPU_USAGE = Gauge(
+    'ai_agent_cpu_usage_ratio',
+    'Simulated CPU usage ratio (0.0 to 1.0)'
+)
+
 # In-memory session store
 active_sessions = {}
 
@@ -109,9 +119,14 @@ def simulate_ai_thinking():
     """Simulate AI processing time"""
     time.sleep(random.uniform(0.5, 2.0))
 
-def log_event(event_type: str, extra_fields: dict):
+def log_event(event_type: str, extra_fields: dict, level: str = "info"):
     """Log structured event for Loki"""
-    logger.info(event_type, extra={"extra_fields": extra_fields})
+    if level == "warning":
+        logger.warning(event_type, extra={"extra_fields": extra_fields})
+    elif level == "error":
+        logger.error(event_type, extra={"extra_fields": extra_fields})
+    else:
+        logger.info(event_type, extra={"extra_fields": extra_fields})
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -270,6 +285,53 @@ async def agent_query(request: QueryRequest):
             "error_type": type(e).__name__
         })
         raise HTTPException(status_code=500, detail="AI agent processing error")
+
+@app.post("/api/trigger/ram")
+async def trigger_ram():
+    bytes_used = int(7.8 * 1024 * 1024 * 1024)
+    SYSTEM_MEMORY_USAGE.set(bytes_used)
+    log_event("resource_warning", {
+        "status": "critical",
+        "resource": "ram",
+        "used_gb": 7.8,
+        "limit_gb": 8.0,
+        "message": "HIGH RAM ALERT: System memory usage is critically high (97.5% capacity). Please allocate more resources or terminate active sessions."
+    }, level="warning")
+    return {"status": "triggered", "message": "Simulated RAM spike triggered."}
+
+@app.post("/api/trigger/cpu")
+async def trigger_cpu():
+    SYSTEM_CPU_USAGE.set(0.95)
+    log_event("resource_warning", {
+        "status": "critical",
+        "resource": "vcpu",
+        "utilization": 0.95,
+        "message": "HIGH CPU ALERT: vCPU utilization is critically high (95.0%). CPU throttling may occur."
+    }, level="warning")
+    return {"status": "triggered", "message": "Simulated vCPU spike triggered."}
+
+@app.post("/api/trigger/segfault")
+async def trigger_segfault():
+    ERROR_COUNTER.labels(error_type="segfault").inc()
+    log_event("fatal_error", {
+        "status": "crash",
+        "signal": "SIGSEGV",
+        "error_type": "segfault",
+        "code": 139,
+        "message": "CRITICAL FATAL ERROR: Segmentation fault (SIGSEGV) at address 0x0000000000000030. Memory dereference failed. Process terminating..."
+    }, level="error")
+    return {"status": "triggered", "message": "Simulated Segfault crash triggered."}
+
+@app.post("/api/trigger/outofindex")
+async def trigger_outofindex():
+    ERROR_COUNTER.labels(error_type="outofindex").inc()
+    log_event("runtime_error", {
+        "status": "error",
+        "error_type": "outofindex",
+        "exception": "IndexError",
+        "message": "IndexError: list index out of range. Exception in thread 'main' java.lang.IndexOutOfBoundsException: Index 15 out of bounds for length 10. Attempted to read invalid offset."
+    }, level="error")
+    return {"status": "triggered", "message": "Simulated Out of Index exception triggered."}
 
 @app.get("/api/agent/sessions")
 async def get_sessions():

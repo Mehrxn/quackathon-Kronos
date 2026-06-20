@@ -62,6 +62,11 @@ class AIAgentClient {
         this.queryCountElement = document.getElementById('queryCount');
         this.avgResponseTimeElement = document.getElementById('avgResponseTime');
         this.tokensUsedElement = document.getElementById('tokensUsed');
+        this.triggerRamBtn = document.getElementById('triggerRamBtn');
+        this.triggerCpuBtn = document.getElementById('triggerCpuBtn');
+        this.triggerSegfaultBtn = document.getElementById('triggerSegfaultBtn');
+        this.triggerOutofindexBtn = document.getElementById('triggerOutofindexBtn');
+        this.simulationFeedback = document.getElementById('simulationFeedback');
     }
     
     setupEventListeners() {
@@ -73,6 +78,10 @@ class AIAgentClient {
             }
         });
         this.newSessionBtn.addEventListener('click', () => this.createNewSession());
+        this.triggerRamBtn.addEventListener('click', () => this.triggerIncident('ram'));
+        this.triggerCpuBtn.addEventListener('click', () => this.triggerIncident('cpu'));
+        this.triggerSegfaultBtn.addEventListener('click', () => this.triggerIncident('segfault'));
+        this.triggerOutofindexBtn.addEventListener('click', () => this.triggerIncident('outofindex'));
     }
     
     async checkBackendHealth() {
@@ -220,6 +229,34 @@ class AIAgentClient {
         this.addMessage('system', 'New session started. You can now send queries to the AI agent.');
         
         frontendLogger.logEvent('new_session_created', {});
+    }
+    
+    async triggerIncident(type) {
+        this.simulationFeedback.className = 'sim-feedback';
+        this.simulationFeedback.textContent = 'Triggering...';
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/api/trigger/${type}`, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            this.simulationFeedback.classList.add('success');
+            this.simulationFeedback.textContent = data.message;
+            this.addMessage('system', `🔔 Simulated incident triggered: ${data.message}`);
+            
+            // Log event using frontend logger
+            frontendLogger.logEvent('incident_triggered', { incident_type: type });
+            
+        } catch (error) {
+            this.simulationFeedback.classList.add('error');
+            this.simulationFeedback.textContent = `Failed: ${error.message}`;
+            this.addMessage('system', `❌ Failed to trigger simulated incident: ${error.message}`);
+        }
     }
 }
 

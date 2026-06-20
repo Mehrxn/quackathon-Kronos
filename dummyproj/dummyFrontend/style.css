@@ -237,3 +237,81 @@ textarea:focus {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.simulator-panel {
+    margin-top: 30px;
+    border-top: 2px solid #e2e8f0;
+    padding-top: 20px;
+}
+
+.simulator-panel h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.simulator-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sim-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sim-btn.ram {
+    background: #dd6b20;
+}
+.sim-btn.ram:hover {
+    background: #c05621;
+}
+
+.sim-btn.cpu {
+    background: #3182ce;
+}
+.sim-btn.cpu:hover {
+    background: #2b6cb0;
+}
+
+.sim-btn.crash {
+    background: #e53e3e;
+}
+.sim-btn.crash:hover {
+    background: #c53030;
+}
+
+.sim-btn.error {
+    background: #805ad5;
+}
+.sim-btn.error:hover {
+    background: #6b46c1;
+}
+
+.sim-feedback {
+    margin-top: 12px;
+    font-size: 12px;
+    text-align: center;
+    min-height: 18px;
+    font-weight: 500;
+}
+
+.sim-feedback.success {
+    color: #38a169;
+}
+
+.sim-feedback.error {
+    color: #e53e3e;
+}

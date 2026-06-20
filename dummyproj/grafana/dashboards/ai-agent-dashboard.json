@@ -37,6 +37,18 @@
       ]
     },
     {
+      "title": "System CPU Utilization (vCPU)",
+      "type": "graph",
+      "gridPos": {"h": 4, "w": 18, "x": 6, "y": 8},
+      "targets": [
+        {
+          "expr": "ai_agent_cpu_usage_ratio * 100",
+          "legendFormat": "vCPU Usage"
+        }
+      ],
+      "yaxis": {"title": "% Utilization"}
+    },
+    {
       "title": "AI Thinking Time",
       "type": "graph",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
@@ -69,6 +81,18 @@
           "legendFormat": "{{error_type}}"
         }
       ]
+    },
+    {
+      "title": "System Memory Usage (RAM)",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [
+        {
+          "expr": "ai_agent_memory_usage_bytes",
+          "legendFormat": "RAM Usage"
+        }
+      ],
+      "yaxis": {"title": "Bytes"}
     },
     {
       "title": "Application Logs",

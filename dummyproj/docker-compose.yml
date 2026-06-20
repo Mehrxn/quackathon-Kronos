@@ -89,6 +89,24 @@ services:
       - loki
     restart: unless-stopped
 
+  webhook-server:
+    image: node:alpine
+    container_name: webhook-server
+    volumes:
+      - ./dummyWebhook:/app
+    working_dir: /app
+    command: node server.js
+    environment:
+      - LOKI_URL=http://loki:3100
+      - AGENT_URL=http://host.docker.internal:8000/api/v1/incidents/webhook
+    ports:
+      - "8085:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+    restart: unless-stopped
+
 networks:
   monitoring:
     driver: bridge
