@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Remove this line -->
+    <!-- <script src="https://unpkg.com/@grafana/faro-web-sdk@1.3.7/dist/bundle/faro-web-sdk.iife.js"></script> -->
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Agent Testing Interface</h1>
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </header>
+
+        <main>
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        Welcome to the AI Agent Interface. Start by typing your query below.
+                    </div>
+                </div>
+                
+                <div class="input-container">
+                    <textarea 
+                        id="queryInput" 
+                        placeholder="Type your AI agent query here..."
+                        rows="3"
+                    ></textarea>
+                    <button id="sendButton" class="send-btn">
+                        <span class="btn-text">Send</span>
+                        <span class="btn-icon">→</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h3>Session Stats</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Session ID:</span>
+                    <span class="stat-value" id="sessionId">Not created</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Queries Sent:</span>
+                    <span class="stat-value" id="queryCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Avg Response Time:</span>
+                    <span class="stat-value" id="avgResponseTime">0ms</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Tokens Used:</span>
+                    <span class="stat-value" id="tokensUsed">0</span>
+                </div>
+                <button id="newSessionBtn" class="new-session-btn">
+                    New Session
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

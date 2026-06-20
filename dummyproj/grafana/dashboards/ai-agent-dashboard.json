@@ -1,0 +1,86 @@
+{
+  "title": "AI Agent Monitoring Dashboard",
+  "uid": "ai-agent-monitoring",
+  "panels": [
+    {
+      "title": "Request Rate",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "rate(ai_agent_requests_total[5m])",
+          "legendFormat": "{{method}} {{endpoint}} ({{status}})"
+        }
+      ],
+      "yaxis": {"title": "Requests/sec"}
+    },
+    {
+      "title": "Response Time (P95)",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(ai_agent_response_time_seconds_bucket[5m]))",
+          "legendFormat": "{{endpoint}}"
+        }
+      ],
+      "yaxis": {"title": "Seconds"}
+    },
+    {
+      "title": "Active Sessions",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+      "targets": [
+        {
+          "expr": "ai_agent_active_sessions"
+        }
+      ]
+    },
+    {
+      "title": "AI Thinking Time",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "targets": [
+        {
+          "expr": "rate(ai_agent_thinking_time_seconds_sum[5m]) / rate(ai_agent_thinking_time_seconds_count[5m])",
+          "legendFormat": "Average Thinking Time"
+        }
+      ]
+    },
+    {
+      "title": "Token Usage",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [
+        {
+          "expr": "rate(ai_agent_tokens_total[5m])",
+          "legendFormat": "{{type}} tokens"
+        }
+      ],
+      "yaxis": {"title": "Tokens/sec"}
+    },
+    {
+      "title": "Error Rate",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "targets": [
+        {
+          "expr": "rate(ai_agent_errors_total[5m])",
+          "legendFormat": "{{error_type}}"
+        }
+      ]
+    },
+    {
+      "title": "Application Logs",
+      "type": "logs",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 28},
+      "targets": [
+        {
+          "expr": "{container=~\"ai-agent.*\"}",
+          "refId": "A"
+        }
+      ],
+      "datasource": "Loki"
+    }
+  ]
+}
