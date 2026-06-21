@@ -1,4 +1,5 @@
 """Loki client — pull detailed logs for an alert's time window."""
+
 from __future__ import annotations
 
 import logging

@@ -1,4 +1,5 @@
 """Configuration loading, env-var substitution, and fail-fast validation."""
+
 from __future__ import annotations
 
 import os
@@ -19,12 +20,14 @@ class ConfigError(RuntimeError):
 def _substitute_env(value: Any) -> Any:
     """Recursively replace ${VAR} tokens with environment values."""
     if isinstance(value, str):
+
         def repl(match: re.Match) -> str:
             var = match.group(1)
             env = os.environ.get(var)
             if env is None:
                 raise ConfigError(f"Required environment variable not set: {var}")
             return env
+
         return _ENV_PATTERN.sub(repl, value)
     if isinstance(value, dict):
         return {k: _substitute_env(v) for k, v in value.items()}
@@ -54,45 +57,65 @@ class Config:
 
     # Convenience typed views -------------------------------------------------
     @property
-    def repository(self) -> dict: return self.raw["repository"]
+    def repository(self) -> dict:
+        return self.raw["repository"]
 
     @property
-    def loki(self) -> dict: return self.raw["loki"]
+    def loki(self) -> dict:
+        return self.raw["loki"]
 
     @property
-    def claude(self) -> dict: return self.raw["claude"]
+    def claude(self) -> dict:
+        return self.raw["claude"]
 
     @property
-    def parcle(self) -> dict: return self.raw["parcle"]
+    def parcle(self) -> dict:
+        return self.raw["parcle"]
 
     @property
-    def autonomy(self) -> dict: return self.raw["autonomy"]
+    def autonomy(self) -> dict:
+        return self.raw["autonomy"]
 
     @property
-    def rules(self) -> dict: return self.raw["rules"]
+    def rules(self) -> dict:
+        return self.raw["rules"]
 
     @property
-    def context_retrieval(self) -> dict: return self.raw["context_retrieval"]
+    def context_retrieval(self) -> dict:
+        return self.raw["context_retrieval"]
 
     @property
-    def github(self) -> dict: return self.raw["github"]
+    def github(self) -> dict:
+        return self.raw["github"]
 
     @property
-    def code_style(self) -> dict: return self.raw["code_style"]
+    def code_style(self) -> dict:
+        return self.raw["code_style"]
 
     @property
-    def build(self) -> dict: return self.raw["build"]
+    def build(self) -> dict:
+        return self.raw["build"]
 
     @property
-    def test(self) -> dict: return self.raw["test"]
+    def test(self) -> dict:
+        return self.raw["test"]
 
     @property
-    def pattern_cache(self) -> dict: return self.raw["pattern_cache"]
+    def pattern_cache(self) -> dict:
+        return self.raw["pattern_cache"]
 
 
 _REQUIRED_SECTIONS = [
-    "repository", "loki", "claude", "parcle", "autonomy",
-    "rules", "context_retrieval", "github", "build", "test",
+    "repository",
+    "loki",
+    "claude",
+    "parcle",
+    "autonomy",
+    "rules",
+    "context_retrieval",
+    "github",
+    "build",
+    "test",
 ]
 
 

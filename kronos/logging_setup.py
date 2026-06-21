@@ -1,4 +1,5 @@
 """Logging configuration (optional JSON formatter)."""
+
 from __future__ import annotations
 
 import json
@@ -34,8 +35,7 @@ def setup_logging(config: Config) -> None:
     if lg.get("json_format"):
         fmt = JsonFormatter()
     else:
-        fmt = logging.Formatter(
-            "%(asctime)s %(levelname)s %(name)s %(message)s")
+        fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     for h in handlers:
         h.setFormatter(fmt)
     root = logging.getLogger()

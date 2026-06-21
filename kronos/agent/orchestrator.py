@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Orchestrator — the end-to-end incident workflow (steps 1-13).
 
 Ties retrieval, cache, diagnosis, decision matrix, and GitHub actions into
@@ -18,7 +19,11 @@ from kronos.agent.decision import Action, DecisionEngine
 from kronos.agent.runner import CommandRunner
 from kronos.config import Config
 from kronos.integrations import (
-    Diagnoser, GitHubClient, LokiClient, ParcleClient, PatternCache,
+    Diagnoser,
+    GitHubClient,
+    LokiClient,
+    ParcleClient,
+    PatternCache,
 )
 from kronos.models import Diagnosis, Incident, IncidentStatus, Priority
 from kronos.retrieval import ContextAssembler, CodeRetriever, ErrorParser
@@ -115,10 +120,12 @@ class Orchestrator:
 
             # Step 7: single CoT diagnosis
             diagnosis = await self.diagnoser.diagnose(
-                service=incident.service, context=context, fuzzy_hint=fuzzy_hint)
+                service=incident.service, context=context, fuzzy_hint=fuzzy_hint
+            )
             incident.log(
                 f"Diagnosed: conf={diagnosis.confidence:.2f} "
-                f"prio={diagnosis.priority.value}")
+                f"prio={diagnosis.priority.value}"
+            )
 
         incident.diagnosis = diagnosis
 
@@ -132,7 +139,8 @@ class Orchestrator:
         # Step 8 + 10: reconcile priority and apply decision matrix
         hint = self._infer_priority(patterns)
         decision = self.decision.decide(
-            hint=hint, diagnosis=diagnosis, test_reproduced=test_reproduced)
+            hint=hint, diagnosis=diagnosis, test_reproduced=test_reproduced
+        )
         incident.resolved_priority = decision.resolved_priority
         incident.log(f"Decision: {decision.action.value} — {decision.reason}")
 
@@ -156,8 +164,9 @@ class Orchestrator:
     async def _build_context_for_fix(self, incident: Incident) -> str:
         chunks = await self.retriever.retrieve(incident.patterns)
         ranked = self.assembler.rank(chunks, incident.patterns)
-        context, _ = self.assembler.assemble(ranked, incident.error_logs,
-                                             incident.patterns)
+        context, _ = self.assembler.assemble(
+            ranked, incident.error_logs, incident.patterns
+        )
         return context
 
     async def _auto_fix_path(self, incident: Incident, diagnosis: Diagnosis) -> None:
@@ -173,8 +182,8 @@ class Orchestrator:
             incident.log(f"Fix generation attempt {attempt}/{self.max_retries}")
             try:
                 patch = await self.diagnoser.generate_fix(
-                    context=context, diagnosis=diagnosis,
-                    prior_failure=prior_failure)
+                    context=context, diagnosis=diagnosis, prior_failure=prior_failure
+                )
             except Exception as e:  # noqa: BLE001
                 prior_failure = f"generation error: {e}"
                 continue
@@ -196,8 +205,7 @@ class Orchestrator:
 
         if not success:
             incident.log("Auto-fix failed after retries; routing to issue")
-            await self._issue_path(incident, diagnosis,
-                                   "auto-fix failed after retries")
+            await self._issue_path(incident, diagnosis, "auto-fix failed after retries")
             return
 
         prio = incident.resolved_priority.value if incident.resolved_priority else "?"
@@ -211,8 +219,9 @@ class Orchestrator:
         incident.status = IncidentStatus.PR_OPENED
         incident.log(f"PR opened: {url}")
 
-    async def _issue_path(self, incident: Incident, diagnosis: Diagnosis,
-                          reason: str) -> None:
+    async def _issue_path(
+        self, incident: Incident, diagnosis: Diagnosis, reason: str
+    ) -> None:
         prio = incident.resolved_priority.value if incident.resolved_priority else "?"
         title = f"[Kronos] Incident {incident.incident_id[:8]} — Priority {prio}"
         body = self._issue_body(incident, diagnosis, reason)
@@ -225,10 +234,15 @@ class Orchestrator:
         if url:
             decision = await asyncio.to_thread(
                 self.github.poll_issue_for_command,
-                url, timeout=self.approval_timeout, interval=self.approval_interval)
+                url,
+                timeout=self.approval_timeout,
+                interval=self.approval_interval,
+            )
             incident.log(f"Maintainer command: {decision}")
             if decision == "fix":
-                incident.resolved_priority = incident.resolved_priority or Priority.MEDIUM
+                incident.resolved_priority = (
+                    incident.resolved_priority or Priority.MEDIUM
+                )
                 await self._auto_fix_path(incident, diagnosis)
             elif decision == "ignore":
                 incident.status = IncidentStatus.IGNORED
@@ -243,7 +257,8 @@ class Orchestrator:
             summary=diagnosis.root_cause,
             root_cause=diagnosis.root_cause,
             fix_template=diagnosis.fix_summary,
-            keywords=keywords, outcome=outcome,
+            keywords=keywords,
+            outcome=outcome,
             tags={"incident_id": incident.incident_id},
         )
         await self.parcle.record_rule(

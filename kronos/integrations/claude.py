@@ -9,6 +9,7 @@ Uses the Gemini API (generativelanguage.googleapis.com). The public
 interface (Diagnoser.diagnose / generate_fix / close) is unchanged, so the
 rest of the agent is unaffected.
 """
+
 from __future__ import annotations
 
 import json
@@ -46,8 +47,14 @@ _DIAG_SCHEMA = {
         "reasoning": {"type": "string"},
     },
     "required": ["root_cause", "confidence", "priority", "fix_summary"],
-    "propertyOrdering": ["root_cause", "confidence", "priority",
-                         "fix_summary", "proposed_test", "reasoning"],
+    "propertyOrdering": [
+        "root_cause",
+        "confidence",
+        "priority",
+        "fix_summary",
+        "proposed_test",
+        "reasoning",
+    ],
 }
 
 _FIX_SCHEMA = {
@@ -155,7 +162,7 @@ def _extract_json(text: str) -> dict:
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(text[start:end + 1])
+            return json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             pass
     # Last resort: repair a truncated payload.
@@ -173,8 +180,12 @@ class Diagnoser:
         # output gets truncated mid-string (see the log we just debugged).
         self.max_tokens = max(configured, _MIN_OUTPUT_TOKENS)
         if configured < _MIN_OUTPUT_TOKENS:
-            log.warning("config max_tokens=%d raised to floor %d to avoid "
-                        "truncated diagnosis output", configured, _MIN_OUTPUT_TOKENS)
+            log.warning(
+                "config max_tokens=%d raised to floor %d to avoid "
+                "truncated diagnosis output",
+                configured,
+                _MIN_OUTPUT_TOKENS,
+            )
         self.temperature = cc.get("temperature", 0.2)
         self.timeout = cc.get("timeout", 60)
         self.language = config.code_style.get("language", "go")
@@ -221,8 +232,9 @@ class Diagnoser:
         parts = candidates[0].get("content", {}).get("parts", [])
         return "".join(p.get("text", "") for p in parts)
 
-    async def diagnose(self, *, service: str, context: str,
-                       fuzzy_hint: Optional[str] = None) -> Diagnosis:
+    async def diagnose(
+        self, *, service: str, context: str, fuzzy_hint: Optional[str] = None
+    ) -> Diagnosis:
         hint_block = ""
         if fuzzy_hint:
             hint_block = (
@@ -231,8 +243,10 @@ class Diagnoser:
                 f"  PRIOR: {fuzzy_hint}\n\n"
             )
         prompt = _PROMPT_TEMPLATE.format(
-            service=service, context=context or "(no context retrieved)",
-            language=self.language, hint_block=hint_block,
+            service=service,
+            context=context or "(no context retrieved)",
+            language=self.language,
+            hint_block=hint_block,
         )
         text = await self._call(prompt, schema=_DIAG_SCHEMA)
         try:
@@ -241,7 +255,8 @@ class Diagnoser:
             log.error("Failed to parse diagnosis JSON: %s\nRaw: %s", e, text[:1000])
             return Diagnosis(
                 root_cause="Diagnosis parse failure; manual review required.",
-                confidence=0.0, priority=Priority.LOW,
+                confidence=0.0,
+                priority=Priority.LOW,
                 reasoning=text[:1000],
             )
         try:
@@ -258,8 +273,9 @@ class Diagnoser:
             fuzzy_hint_used=bool(fuzzy_hint),
         )
 
-    async def generate_fix(self, *, context: str, diagnosis: Diagnosis,
-                           prior_failure: Optional[str] = None) -> dict:
+    async def generate_fix(
+        self, *, context: str, diagnosis: Diagnosis, prior_failure: Optional[str] = None
+    ) -> dict:
         """Generate a code fix + regression test. Returns parsed JSON dict."""
         retry_block = ""
         if prior_failure:

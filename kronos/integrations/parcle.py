@@ -22,6 +22,7 @@ Result: when you wire up a real Parcle deployment later, just point
 `parcle.api_url` at it and everything works. Until then, the local store
 gives you a real pattern cache.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -41,6 +42,7 @@ log = logging.getLogger("kronos.parcle")
 
 
 # --- Local SQLite store -----------------------------------------------------
+
 
 class _LocalStore:
     """SQLite-backed implementation of the four Parcle memory endpoints.
@@ -112,12 +114,14 @@ class _LocalStore:
             ):
                 stored = json.loads(row["tags_json"])
                 if self._match_tags(stored, tags):
-                    items.append({
-                        "id": row["id"],
-                        "type": row["kind"],
-                        "summary": row["summary"],
-                        "tag": stored,
-                    })
+                    items.append(
+                        {
+                            "id": row["id"],
+                            "type": row["kind"],
+                            "summary": row["summary"],
+                            "tag": stored,
+                        }
+                    )
         return {"items": items}
 
     # POST /memory/search
@@ -141,6 +145,7 @@ class _LocalStore:
 
 
 # --- Public client ---------------------------------------------------------
+
 
 class ParcleClient:
     def __init__(self, config: Config):
@@ -170,12 +175,16 @@ class ParcleClient:
                     return resp.json()
                 log.warning(
                     "Parcle remote %s returned %d; switching to local SQLite "
-                    "fallback for the rest of this session", path, resp.status_code,
+                    "fallback for the rest of this session",
+                    path,
+                    resp.status_code,
                 )
             except httpx.HTTPError as e:
                 log.warning(
                     "Parcle remote %s unreachable (%s); switching to local "
-                    "SQLite fallback for the rest of this session", path, e,
+                    "SQLite fallback for the rest of this session",
+                    path,
+                    e,
                 )
             self._remote_disabled = True
         try:
@@ -202,15 +211,24 @@ class ParcleClient:
         return None
 
     # --- public methods (same surface as before) ----------------------------
-    async def search(self, query: str, *, tags: Optional[dict] = None) -> Optional[dict]:
+    async def search(
+        self, query: str, *, tags: Optional[dict] = None
+    ) -> Optional[dict]:
         """Return {answer, confidence, citations} or None."""
         tag = {"workspace": self.workspace, **(tags or {})}
         return await self._post("/memory/search", {"query": query, "tag": tag})
 
-    async def record_incident(self, *, fingerprint: str, summary: str,
-                              root_cause: str, fix_template: str,
-                              keywords: list[str], outcome: str,
-                              tags: Optional[dict] = None) -> Optional[dict]:
+    async def record_incident(
+        self,
+        *,
+        fingerprint: str,
+        summary: str,
+        root_cause: str,
+        fix_template: str,
+        keywords: list[str],
+        outcome: str,
+        tags: Optional[dict] = None,
+    ) -> Optional[dict]:
         tag = {
             "workspace": self.workspace,
             "fingerprint": fingerprint,
@@ -219,17 +237,24 @@ class ParcleClient:
             **(tags or {}),
         }
         messages = [
-            {"speaker": "agent", "content":
-                f"Incident fingerprint {fingerprint}. "
+            {
+                "speaker": "agent",
+                "content": f"Incident fingerprint {fingerprint}. "
                 f"Root cause: {root_cause}. "
-                f"Fix template: {fix_template}. Outcome: {outcome}."},
+                f"Fix template: {fix_template}. Outcome: {outcome}.",
+            },
         ]
-        return await self._post("/memory/messages",
-                                {"messages": messages, "tag": tag})
+        return await self._post("/memory/messages", {"messages": messages, "tag": tag})
 
-    async def record_rule(self, *, fingerprint: str, root_cause: str,
-                          fix_template: str, confidence: float,
-                          keywords: list[str]) -> Optional[dict]:
+    async def record_rule(
+        self,
+        *,
+        fingerprint: str,
+        root_cause: str,
+        fix_template: str,
+        confidence: float,
+        keywords: list[str],
+    ) -> Optional[dict]:
         """Store/refresh the reusable rule document for a fingerprint."""
         body = {
             "filename": f"rule-{fingerprint}.md",
@@ -249,8 +274,9 @@ class ParcleClient:
         return await self._post("/memory/documents", body)
 
     async def list_rules(self) -> list[dict]:
-        res = await self._post("/memory/list",
-                               {"tag": {"workspace": self.workspace, "type": "rule"}})
+        res = await self._post(
+            "/memory/list", {"tag": {"workspace": self.workspace, "type": "rule"}}
+        )
         if res and isinstance(res.get("items"), list):
             return res["items"]
         return []

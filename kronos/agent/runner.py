@@ -1,4 +1,5 @@
 """Build & test command execution for the auto-fix path."""
+
 from __future__ import annotations
 
 import logging
@@ -28,8 +29,12 @@ class CommandRunner:
     def _run(self, cmd: str, timeout: int) -> RunResult:
         try:
             r = subprocess.run(
-                cmd, shell=True, cwd=str(self.cwd),
-                capture_output=True, text=True, timeout=timeout,
+                cmd,
+                shell=True,
+                cwd=str(self.cwd),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
             )
             out = (r.stdout or "") + "\n" + (r.stderr or "")
             return RunResult(ok=r.returncode == 0, output=out.strip())
@@ -44,8 +49,9 @@ class CommandRunner:
     def run_build(self) -> RunResult:
         return self._run(self.build_cmd, self.build_timeout)
 
-    def run_confirmation_test(self, test_code: str, *,
-                              expect_fail_means_reproduced: bool = True) -> bool:
+    def run_confirmation_test(
+        self, test_code: str, *, expect_fail_means_reproduced: bool = True
+    ) -> bool:
         """Write a temp confirmation test, run suite, infer reproduction.
 
         For the confirmation step the test is written to *demonstrate* the bug.

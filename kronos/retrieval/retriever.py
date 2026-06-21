@@ -9,6 +9,7 @@ Search is implemented as a pure-Python file walk + line-regex scan rather
 than shelling out to a `grep` binary, so behavior is identical on Windows,
 macOS, and Linux (no WSL / Git Bash / grep-on-PATH requirement).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -33,17 +34,34 @@ _DEF_PATTERNS = {
 }
 _OPEN_BRACE = {"go", "javascript", "typescript", "java", "rust"}
 _SRC_EXT = {
-    "go": [".go"], "python": [".py"], "javascript": [".js", ".jsx"],
-    "typescript": [".ts", ".tsx"], "java": [".java"], "rust": [".rs"],
+    "go": [".go"],
+    "python": [".py"],
+    "javascript": [".js", ".jsx"],
+    "typescript": [".ts", ".tsx"],
+    "java": [".java"],
+    "rust": [".rs"],
 }
 _COMMENT_PREFIX = {
-    "go": "//", "javascript": "//", "typescript": "//", "java": "//",
-    "rust": "//", "python": "#",
+    "go": "//",
+    "javascript": "//",
+    "typescript": "//",
+    "java": "//",
+    "rust": "//",
+    "python": "#",
 }
 # Directories never worth scanning; keeps the walk fast on large checkouts.
 _SKIP_DIRS = {
-    ".git", "node_modules", "vendor", "__pycache__", ".venv", "venv",
-    "dist", "build", "target", ".idea", ".vscode",
+    ".git",
+    "node_modules",
+    "vendor",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    "target",
+    ".idea",
+    ".vscode",
 }
 
 
@@ -77,7 +95,9 @@ class CodeRetriever:
                 if fn.endswith(exts):
                     yield os.path.join(root, fn)
 
-    def _grep(self, pattern: str, *, max_count: Optional[int] = None) -> list[GrepMatch]:
+    def _grep(
+        self, pattern: str, *, max_count: Optional[int] = None
+    ) -> list[GrepMatch]:
         """Line-based regex search across source files under repo_path.
 
         Pure Python — no dependency on an external `grep` binary, so this
@@ -119,8 +139,9 @@ class CodeRetriever:
             # call sites
             caller_pat = r"\b" + re.escape(bare) + r"\s*\("
             for m in self._grep(caller_pat, max_count=self.max_callers + 3):
-                chunk = self._extract_window(m, "caller", before=5, after=5,
-                                             function=pat.function)
+                chunk = self._extract_window(
+                    m, "caller", before=5, after=5, function=pat.function
+                )
                 if chunk:
                     chunks.append(chunk)
                 if sum(1 for c in chunks if c.category == "caller") >= self.max_callers:
@@ -131,8 +152,9 @@ class CodeRetriever:
             if kw_count >= self.max_keyword_matches:
                 break
             for m in self._grep(r"\b" + re.escape(kw) + r"\b", max_count=2):
-                chunk = self._extract_window(m, "keyword", before=3, after=3,
-                                             function=pat.function)
+                chunk = self._extract_window(
+                    m, "keyword", before=3, after=3, function=pat.function
+                )
                 if chunk:
                     chunks.append(chunk)
                     kw_count += 1
@@ -196,12 +218,17 @@ class CodeRetriever:
         content = self._clean(collected)
         return CodeChunk(
             file=os.path.relpath(m.file, self.repo_path),
-            start_line=start + 1, end_line=end + 1,
-            content=content, category="definition", score=1.0, function=function,
+            start_line=start + 1,
+            end_line=end + 1,
+            content=content,
+            category="definition",
+            score=1.0,
+            function=function,
         )
 
-    def _extract_window(self, m: GrepMatch, category: str, *, before: int,
-                        after: int, function: str) -> Optional[CodeChunk]:
+    def _extract_window(
+        self, m: GrepMatch, category: str, *, before: int, after: int, function: str
+    ) -> Optional[CodeChunk]:
         lines = self._read_lines(m.file)
         if not lines:
             return None
@@ -213,9 +240,12 @@ class CodeRetriever:
             return None
         return CodeChunk(
             file=os.path.relpath(m.file, self.repo_path),
-            start_line=lo + 1, end_line=hi,
-            content=content, category=category,
-            score=0.8 if category == "caller" else 0.6, function=function,
+            start_line=lo + 1,
+            end_line=hi,
+            content=content,
+            category=category,
+            score=0.8 if category == "caller" else 0.6,
+            function=function,
         )
 
     # --- Public entry: run all patterns concurrently -------------------------

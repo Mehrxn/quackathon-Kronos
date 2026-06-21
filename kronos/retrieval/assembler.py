@@ -5,6 +5,7 @@ sorts, and tiebreaks by git recency. Phase 5 allocates the token budget
 across categories and walks the ranked list per category, dropping whole
 chunks that don't fit rather than truncating.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -28,10 +29,16 @@ class ContextAssembler:
         self.repo_path = Path(config.repository["local_path"])
         cr = config.context_retrieval
         self.max_tokens = cr.get("max_context_tokens", 4000)
-        self.allocation = cr.get("token_allocation", {
-            "error_logs": 0.30, "definitions": 0.35,
-            "callers": 0.15, "keywords": 0.10, "git_changes": 0.10,
-        })
+        self.allocation = cr.get(
+            "token_allocation",
+            {
+                "error_logs": 0.30,
+                "definitions": 0.35,
+                "callers": 0.15,
+                "keywords": 0.10,
+                "git_changes": 0.10,
+            },
+        )
 
     # --- Phase 4 -------------------------------------------------------------
     @lru_cache(maxsize=256)
@@ -39,21 +46,30 @@ class ContextAssembler:
         """Unix timestamp of last commit to file; 0 if unavailable."""
         try:
             out = subprocess.run(
-                ["git", "-C", str(self.repo_path), "log", "-1", "--format=%ct", "--", file],
-                capture_output=True, text=True, timeout=10,
+                [
+                    "git",
+                    "-C",
+                    str(self.repo_path),
+                    "log",
+                    "-1",
+                    "--format=%ct",
+                    "--",
+                    file,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             return int(out.stdout.strip() or 0)
         except (subprocess.SubprocessError, ValueError):
             return 0
 
     def _high_priority_funcs(self, patterns: list[ErrorPattern]) -> set[str]:
-        return {
-            p.function for p in patterns
-            if p.priority_hint == Priority.HIGH
-        }
+        return {p.function for p in patterns if p.priority_hint == Priority.HIGH}
 
-    def rank(self, chunks: list[CodeChunk],
-             patterns: list[ErrorPattern]) -> list[CodeChunk]:
+    def rank(
+        self, chunks: list[CodeChunk], patterns: list[ErrorPattern]
+    ) -> list[CodeChunk]:
         # merge overlapping (keep higher score, widen range)
         merged: list[CodeChunk] = []
         for ch in sorted(chunks, key=lambda c: (c.file, c.start_line)):
@@ -84,21 +100,40 @@ class ContextAssembler:
         """Recent git diff summary as a context chunk."""
         try:
             out = subprocess.run(
-                ["git", "-C", str(self.repo_path), "log", "-3",
-                 "--format=%h %s", "--stat"],
-                capture_output=True, text=True, timeout=10,
+                [
+                    "git",
+                    "-C",
+                    str(self.repo_path),
+                    "log",
+                    "-3",
+                    "--format=%h %s",
+                    "--stat",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if out.stdout.strip():
-                return [CodeChunk(
-                    file="<git>", start_line=0, end_line=0,
-                    content=out.stdout.strip()[:2000], category="git_change", score=0.5,
-                )]
+                return [
+                    CodeChunk(
+                        file="<git>",
+                        start_line=0,
+                        end_line=0,
+                        content=out.stdout.strip()[:2000],
+                        category="git_change",
+                        score=0.5,
+                    )
+                ]
         except subprocess.SubprocessError:
             pass
         return []
 
-    def assemble(self, ranked: list[CodeChunk], error_logs: list[str],
-                 patterns: list[ErrorPattern]) -> tuple[str, list[CodeChunk]]:
+    def assemble(
+        self,
+        ranked: list[CodeChunk],
+        error_logs: list[str],
+        patterns: list[ErrorPattern],
+    ) -> tuple[str, list[CodeChunk]]:
         """Walk ranked chunks per category within sub-budgets.
 
         Returns (assembled_prompt_context, chunks_actually_used).
@@ -122,8 +157,10 @@ class ContextAssembler:
 
         # map category -> budget key
         cat_to_key = {
-            "definition": "definitions", "caller": "callers",
-            "keyword": "keywords", "git_change": "git_changes",
+            "definition": "definitions",
+            "caller": "callers",
+            "keyword": "keywords",
+            "git_change": "git_changes",
         }
         spent_by_key = {k: 0 for k in budgets}
 
@@ -148,12 +185,16 @@ class ContextAssembler:
         if sections.get("error_logs"):
             parts.append("## ERROR LOGS\n" + "\n".join(sections["error_logs"]))
         if sections.get("definitions"):
-            parts.append("## FUNCTION DEFINITIONS\n" + "\n\n".join(sections["definitions"]))
+            parts.append(
+                "## FUNCTION DEFINITIONS\n" + "\n\n".join(sections["definitions"])
+            )
         if sections.get("callers"):
             parts.append("## CALL SITES\n" + "\n\n".join(sections["callers"]))
         if sections.get("keywords"):
             parts.append("## KEYWORD CONTEXT\n" + "\n\n".join(sections["keywords"]))
         if sections.get("git_changes"):
-            parts.append("## RECENT GIT CHANGES\n" + "\n\n".join(sections["git_changes"]))
+            parts.append(
+                "## RECENT GIT CHANGES\n" + "\n\n".join(sections["git_changes"])
+            )
 
         return "\n\n".join(parts), used_chunks

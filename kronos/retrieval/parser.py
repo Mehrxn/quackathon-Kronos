@@ -4,6 +4,7 @@ Map raw Loki log lines to structured ErrorPattern objects via a regex
 library, extract the function name preceding the error, deduplicate on
 (function, error_type), and tag each with a priority hint.
 """
+
 from __future__ import annotations
 
 import re
@@ -15,19 +16,63 @@ from kronos.models import ErrorPattern, Priority
 # Known error phrasings -> (error_type, default keywords).
 # Ordered: more specific patterns first.
 _KNOWN_ERRORS: list[tuple[re.Pattern, str, list[str]]] = [
-    (re.compile(r"cache\s+overflow", re.I), "cache_overflow", ["cache", "overflow", "evict"]),
-    (re.compile(r"out\s+of\s+memory|OOM\b", re.I), "out_of_memory", ["memory", "alloc", "heap"]),
-    (re.compile(r"goroutine\s+leak", re.I), "goroutine_leak", ["goroutine", "leak", "wait"]),
-    (re.compile(r"nil\s+pointer|null\s+pointer|nil\s+dereference", re.I), "nil_pointer", ["nil", "pointer", "dereference"]),
-    (re.compile(r"connection\s+pool\s+exhausted|pool\s+exhausted", re.I), "pool_exhausted", ["connection", "pool", "exhausted"]),
-    (re.compile(r"index\s+out\s+of\s+range|slice\s+bounds", re.I), "index_out_of_range", ["index", "range", "bounds"]),
-    (re.compile(r"segmentation\s+fault|segfault|SIGSEGV", re.I), "segfault", ["segfault", "memory"]),
+    (
+        re.compile(r"cache\s+overflow", re.I),
+        "cache_overflow",
+        ["cache", "overflow", "evict"],
+    ),
+    (
+        re.compile(r"out\s+of\s+memory|OOM\b", re.I),
+        "out_of_memory",
+        ["memory", "alloc", "heap"],
+    ),
+    (
+        re.compile(r"goroutine\s+leak", re.I),
+        "goroutine_leak",
+        ["goroutine", "leak", "wait"],
+    ),
+    (
+        re.compile(r"nil\s+pointer|null\s+pointer|nil\s+dereference", re.I),
+        "nil_pointer",
+        ["nil", "pointer", "dereference"],
+    ),
+    (
+        re.compile(r"connection\s+pool\s+exhausted|pool\s+exhausted", re.I),
+        "pool_exhausted",
+        ["connection", "pool", "exhausted"],
+    ),
+    (
+        re.compile(r"index\s+out\s+of\s+range|slice\s+bounds", re.I),
+        "index_out_of_range",
+        ["index", "range", "bounds"],
+    ),
+    (
+        re.compile(r"segmentation\s+fault|segfault|SIGSEGV", re.I),
+        "segfault",
+        ["segfault", "memory"],
+    ),
     (re.compile(r"deadlock", re.I), "deadlock", ["deadlock", "lock", "mutex"]),
-    (re.compile(r"race\s+condition|data\s+race", re.I), "race_condition", ["race", "concurrent"]),
-    (re.compile(r"type\s+assertion", re.I), "type_assertion", ["type", "assertion", "interface"]),
-    (re.compile(r"resource\s+leak|fd\s+leak|file\s+descriptor\s+leak", re.I), "resource_leak", ["resource", "leak", "close"]),
+    (
+        re.compile(r"race\s+condition|data\s+race", re.I),
+        "race_condition",
+        ["race", "concurrent"],
+    ),
+    (
+        re.compile(r"type\s+assertion", re.I),
+        "type_assertion",
+        ["type", "assertion", "interface"],
+    ),
+    (
+        re.compile(r"resource\s+leak|fd\s+leak|file\s+descriptor\s+leak", re.I),
+        "resource_leak",
+        ["resource", "leak", "close"],
+    ),
     (re.compile(r"\bpanic\b", re.I), "panic", ["panic", "recover"]),
-    (re.compile(r"\btimeout|timed\s+out|context\s+deadline", re.I), "timeout", ["timeout", "deadline", "context"]),
+    (
+        re.compile(r"\btimeout|timed\s+out|context\s+deadline", re.I),
+        "timeout",
+        ["timeout", "deadline", "context"],
+    ),
     (re.compile(r"deprecat", re.I), "deprecation", ["deprecated"]),
     (re.compile(r"lint\s+error", re.I), "lint_error", ["lint"]),
     (re.compile(r"\bwarning\b", re.I), "warning", ["warning"]),
@@ -36,9 +81,7 @@ _KNOWN_ERRORS: list[tuple[re.Pattern, str, list[str]]] = [
 # Function name preceding a colon. Handles Go-style `pkg.Func:` and
 # `(*Recv).Method:` and bare `funcName:`.
 _FUNC_BEFORE_COLON = re.compile(
-    r"(?:^|\s|\.|/)"
-    r"(\(?\*?[A-Za-z_][\w]*\)?(?:\.[A-Za-z_]\w*)*)"
-    r"\s*[:\(]"
+    r"(?:^|\s|\.|/)" r"(\(?\*?[A-Za-z_][\w]*\)?(?:\.[A-Za-z_]\w*)*)" r"\s*[:\(]"
 )
 # Go stack frame style: `package.(*Type).Method(...)`
 _GO_FRAME = re.compile(r"([A-Za-z_][\w./]*\.\(?\*?\w+\)?(?:\.\w+)?)\(")

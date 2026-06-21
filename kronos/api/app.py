@@ -1,4 +1,5 @@
 """FastAPI application — webhook ingestion, dashboard, and control endpoints."""
+
 from __future__ import annotations
 
 import logging
@@ -9,8 +10,12 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 
 from kronos.agent import IncidentStore, Orchestrator
 from kronos.api.schemas import (
-    DiagnosisResponse, IncidentCreatedResponse, IncidentListResponse,
-    IncidentSummary, InitRequest, QuickIncidentRequest,
+    DiagnosisResponse,
+    IncidentCreatedResponse,
+    IncidentListResponse,
+    IncidentSummary,
+    InitRequest,
+    QuickIncidentRequest,
 )
 from kronos.config import Config, load_config
 from kronos.integrations.github_client import GitHubClient
@@ -58,8 +63,12 @@ def _summary(inc: Incident) -> IncidentSummary:
         incident_id=inc.incident_id,
         status=inc.status.value,
         service=inc.service,
-        declared_priority=inc.declared_priority.value if inc.declared_priority else None,
-        resolved_priority=inc.resolved_priority.value if inc.resolved_priority else None,
+        declared_priority=(
+            inc.declared_priority.value if inc.declared_priority else None
+        ),
+        resolved_priority=(
+            inc.resolved_priority.value if inc.resolved_priority else None
+        ),
         cache_result=inc.cache_result,
         pr_url=inc.pr_url,
         issue_url=inc.issue_url,
@@ -102,11 +111,14 @@ async def list_incidents(
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
 ):
-    items, total = _store().list(status=status, priority=priority,
-                                 offset=offset, limit=limit)
+    items, total = _store().list(
+        status=status, priority=priority, offset=offset, limit=limit
+    )
     return IncidentListResponse(
         incidents=[_summary(i) for i in items],
-        total=total, offset=offset, limit=limit,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
@@ -118,8 +130,7 @@ async def get_incident(incident_id: str):
     return _summary(inc)
 
 
-@app.get("/api/v1/incidents/{incident_id}/diagnosis",
-         response_model=DiagnosisResponse)
+@app.get("/api/v1/incidents/{incident_id}/diagnosis", response_model=DiagnosisResponse)
 async def get_diagnosis(incident_id: str):
     inc = _store().get(incident_id)
     if not inc:
@@ -131,7 +142,9 @@ async def get_diagnosis(incident_id: str):
         confidence=d.confidence if d else None,
         reasoning=d.reasoning if d else None,
         proposed_test=d.proposed_test if d else None,
-        resolved_priority=inc.resolved_priority.value if inc.resolved_priority else None,
+        resolved_priority=(
+            inc.resolved_priority.value if inc.resolved_priority else None
+        ),
         from_cache=d.from_cache if d else False,
         code_context=[c.model_dump() for c in inc.chunks],
         trace=inc.trace,
@@ -172,8 +185,7 @@ async def health():
         "parcle": bool(cfg.parcle.get("api_key")),
     }
     ok = all(checks.values())
-    return {"status": "ok" if ok else "degraded", "checks": checks,
-            "time": time.time()}
+    return {"status": "ok" if ok else "degraded", "checks": checks, "time": time.time()}
 
 
 @app.get("/api/v1/rules")

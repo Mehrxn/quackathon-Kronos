@@ -4,6 +4,7 @@ Uses PyGithub for the API surface and plain git via subprocess for the
 local checkout (clone/fetch/pull, branch, commit). All network-touching
 methods degrade gracefully so a demo can run offline against a local repo.
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,6 +20,7 @@ log = logging.getLogger("kronos.github")
 
 try:
     from github import Github, GithubException  # type: ignore
+
     _HAS_PYGITHUB = True
 except ImportError:  # pragma: no cover
     _HAS_PYGITHUB = False
@@ -60,7 +62,9 @@ class GitHubClient:
     def _git(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(
             ["git", "-C", str(self.local_path), *args],
-            capture_output=True, text=True, timeout=self.git_timeout,
+            capture_output=True,
+            text=True,
+            timeout=self.git_timeout,
         )
 
     def sync_repo(self) -> bool:
@@ -69,11 +73,12 @@ class GitHubClient:
             self.local_path.parent.mkdir(parents=True, exist_ok=True)
             clone_url = self.url
             if self.token and clone_url.startswith("https://"):
-                clone_url = clone_url.replace(
-                    "https://", f"https://{self.token}@")
+                clone_url = clone_url.replace("https://", f"https://{self.token}@")
             r = subprocess.run(
                 ["git", "clone", clone_url, str(self.local_path)],
-                capture_output=True, text=True, timeout=self.git_timeout * 4,
+                capture_output=True,
+                text=True,
+                timeout=self.git_timeout * 4,
             )
             return r.returncode == 0
         self._git("fetch", "origin")
@@ -112,7 +117,8 @@ class GitHubClient:
             return None
         try:
             pr = self._repo.create_pull(
-                title=title, body=body, head=branch, base=self.default_branch)
+                title=title, body=body, head=branch, base=self.default_branch
+            )
             for lbl in self.pr_labels:
                 try:
                     pr.add_to_labels(lbl)
@@ -134,14 +140,16 @@ class GitHubClient:
             return None
         try:
             issue = self._repo.create_issue(
-                title=title, body=body, labels=self.issue_labels)
+                title=title, body=body, labels=self.issue_labels
+            )
             return issue.html_url
         except GithubException as e:
             log.error("Issue creation failed: %s", e)
             return None
 
-    def poll_issue_for_command(self, issue_url: str, *,
-                               timeout: int, interval: int) -> str:
+    def poll_issue_for_command(
+        self, issue_url: str, *, timeout: int, interval: int
+    ) -> str:
         """Poll an issue's comments for @agent: fix / @agent: ignore.
 
         Returns 'fix', 'ignore', or 'timeout'.

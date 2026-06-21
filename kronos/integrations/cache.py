@@ -7,6 +7,7 @@ Single tier, no embeddings. On each incident:
      a hint to the LLM rather than skipping the call
   4. no match -> full retrieval + diagnosis
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -51,8 +52,9 @@ class PatternCache:
         self.parcle = parcle
         self.threshold = config.get("pattern_cache.similarity_threshold", 0.70)
 
-    async def lookup(self, alert_type: str,
-                     patterns: list[ErrorPattern]) -> CacheLookup:
+    async def lookup(
+        self, alert_type: str, patterns: list[ErrorPattern]
+    ) -> CacheLookup:
         fp = compute_fingerprint(alert_type, patterns)
         keywords = {kw for p in patterns for kw in p.keywords}
 

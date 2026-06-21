@@ -1,4 +1,5 @@
 """Core data models shared across the agent pipeline."""
+
 from __future__ import annotations
 
 import enum
@@ -33,8 +34,10 @@ class IncidentStatus(str, enum.Enum):
 
 # --- Retrieval models -------------------------------------------------------
 
+
 class ErrorPattern(BaseModel):
     """A parsed error from a log line (Phase 1 output)."""
+
     function: str
     error_type: str
     keywords: list[str] = Field(default_factory=list)
@@ -47,6 +50,7 @@ class ErrorPattern(BaseModel):
 
 class CodeChunk(BaseModel):
     """A unit of extracted source context (Phase 3 output)."""
+
     file: str
     start_line: int
     end_line: int
@@ -66,6 +70,7 @@ class CodeChunk(BaseModel):
 
 class Diagnosis(BaseModel):
     """LLM diagnosis output (Phase: single CoT call)."""
+
     root_cause: str
     reasoning: str = ""
     confidence: float = 0.0
@@ -78,6 +83,7 @@ class Diagnosis(BaseModel):
 
 # --- Incident model ---------------------------------------------------------
 
+
 class Incident(BaseModel):
     incident_id: str = Field(default_factory=lambda: f"inc_{uuid.uuid4().hex[:12]}")
     created_at: float = Field(default_factory=time.time)
@@ -86,7 +92,7 @@ class Incident(BaseModel):
     service: str = ""
     instance: str = ""
     declared_priority: Optional[Priority] = None  # priority sent in webhook
-    resolved_priority: Optional[Priority] = None   # after reconciliation
+    resolved_priority: Optional[Priority] = None  # after reconciliation
 
     error_logs: list[str] = Field(default_factory=list)
     prometheus_logs: dict[str, Any] = Field(default_factory=dict)

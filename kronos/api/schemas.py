@@ -1,4 +1,5 @@
 """API request/response schemas."""
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -10,6 +11,7 @@ from kronos.models import Priority
 
 class InitRequest(BaseModel):
     """Primary Grafana webhook body."""
+
     prometheus_logs: dict[str, Any] = Field(default_factory=dict)
     loki_logs: list[str] = Field(default_factory=list)
     timestamp: Optional[float] = None
@@ -20,6 +22,7 @@ class InitRequest(BaseModel):
 
 class QuickIncidentRequest(BaseModel):
     """Simplified manual trigger for demos."""
+
     error_logs: list[str]
     priority: Optional[Priority] = None
     service: str = "demo-service"
