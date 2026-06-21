@@ -6,3 +6,4 @@ PyYAML>=6.0
 PyGithub>=2.3
 pytest>=8.0
 pytest-asyncio>=0.23
+parcle>=0.1.0

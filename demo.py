@@ -11,7 +11,7 @@ import time
 
 import httpx
 
-BASE = "http://localhost:8020/api/v1"
+BASE = "http://localhost:8000/api/v1"
 
 INCIDENT = {
     "error_logs": [
