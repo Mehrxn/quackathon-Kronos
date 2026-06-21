@@ -275,9 +275,7 @@ class ParcleClient:
             )
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 fh.write(content)
-            result = self._sdk.ingest_file(
-                user_id=self.user_id, file=tmp_path, tag=tag
-            )
+            result = self._sdk.ingest_file(user_id=self.user_id, file=tmp_path, tag=tag)
             return {"id": getattr(result, "file_id", None), "status": "accepted"}
         finally:
             if tmp_path and os.path.exists(tmp_path):
@@ -350,15 +348,11 @@ class ParcleClient:
         ]
         if not self._remote_disabled:
             try:
-                return await asyncio.to_thread(
-                    self._sdk_ingest_dialog, messages, tag
-                )
+                return await asyncio.to_thread(self._sdk_ingest_dialog, messages, tag)
             except Exception as e:  # noqa: BLE001
                 self._fail_over("ingest_dialog", e)
         try:
-            return await asyncio.to_thread(
-                self._local.insert_message, messages, tag
-            )
+            return await asyncio.to_thread(self._local.insert_message, messages, tag)
         except Exception as e:  # noqa: BLE001
             log.error("Local Parcle message insert error: %s", e)
             return None

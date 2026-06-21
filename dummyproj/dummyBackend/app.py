@@ -150,16 +150,21 @@ app.add_middleware(
 )
 
 # Request tracking middleware
+# Request tracking middleware
 @app.middleware("http")
 async def track_requests(request: Request, call_next):
     start_time = time.time()
     
-    # Log incoming request
-    log_event("request_started", {
-        "method": request.method,
-        "path": request.url.path,
-        "client_ip": request.client.host
-    })
+    # Define paths we don't want to spam in our logs
+    skip_logging = request.url.path in ["/metrics", "/health"]
+    
+    # Log incoming request (only if not skipped)
+    if not skip_logging:
+        log_event("request_started", {
+            "method": request.method,
+            "path": request.url.path,
+            "client_ip": request.client.host
+        })
     
     try:
         response = await call_next(request)
@@ -173,7 +178,7 @@ async def track_requests(request: Request, call_next):
     
     duration = time.time() - start_time
     
-    # Track metrics
+    # We still want Prometheus to TRACK the metrics for these endpoints
     REQUEST_COUNT.labels(
         method=request.method,
         endpoint=request.url.path,
@@ -182,16 +187,16 @@ async def track_requests(request: Request, call_next):
     
     RESPONSE_TIME.labels(endpoint=request.url.path).observe(duration)
     
-    # Log response
-    log_event("request_completed", {
-        "method": request.method,
-        "path": request.url.path,
-        "status": status,
-        "duration_ms": duration * 1000
-    })
+    # Log response (only if not skipped)
+    if not skip_logging:
+        log_event("request_completed", {
+            "method": request.method,
+            "path": request.url.path,
+            "status": status,
+            "duration_ms": duration * 1000
+        })
     
     return response
-
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -396,4 +401,15 @@ async def simulate_background_activity():
 
 if __name__ == "__main__":
     import uvicorn
+    import logging
+
+    # Create a filter to ignore standard Uvicorn access logs for /metrics and /health
+    class EndpointFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            msg = record.getMessage()
+            return msg.find("GET /metrics") == -1 and msg.find("GET /health") == -1
+
+    # Apply the filter to Uvicorn
+    logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

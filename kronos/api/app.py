@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
+from fastapi.responses import HTMLResponse
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 
@@ -45,6 +47,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Kronos", version="1.0", lifespan=lifespan)
 
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def get_dashboard():
+    """Serves the static HTML dashboard."""
+    # This assumes dashboard.html is in the same directory as this app.py file.
+    # Adjust the path if you place it in a templates/ or static/ folder.
+    html_path = Path(__file__).parent / "dashboard.html" 
+    
+    try:
+        with open(html_path, "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "<h1>Dashboard HTML file not found.</h1><p>Please create dashboard.html in the correct directory.</p>"
 
 def _store() -> IncidentStore:
     return _state["store"]
