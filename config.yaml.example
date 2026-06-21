@@ -1,0 +1,111 @@
+repository:
+  github_url: "https://github.com/Nurysso/test/issues"
+  default_branch: "main"
+  local_path: "/home/ironman/quackathon-Kronos/dummyproj/test"
+  github_token: "${GITHUB_TOKEN}"
+  git_timeout: 60
+
+loki:
+  url: "http://localhost:3100/loki/api/v1/query_range"
+  query_timeout: 30
+  log_limit: 1000
+  retention: "24h"
+
+claude:
+  api_key: "${GEMINI_API_KEY}"
+  model: "gemini-2.5-flash"
+  max_tokens: 2000
+  temperature: 0.2
+  timeout: 60
+
+parcle:
+  api_key: "${PARCLE_API_KEY}"
+  api_url: "https://api.parcle.ai/v1"
+  workspace: "kronos"
+  # SQLite fallback path used when the remote API is unreachable. The
+  # client auto-switches after the first failed call and stays local for
+  # the rest of the session.
+  local_db_path: "logs/parcle_local.db"
+
+code_style:
+  language: "python"
+  formatter: "black"
+  naming_convention: "snake_case"
+  max_line_length: 120
+
+build:
+  command: "python -m py_compile main.py"
+  timeout: 120
+
+test:
+  command: "python -m pytest -v -timeout=120s"
+  timeout: 180
+
+autonomy:
+  full_autonomous: true
+  max_generation_retries: 3
+  approval_timeout: 3600
+  approval_poll_interval: 30
+
+rules:
+  priority:
+    high:
+      error_patterns:
+        - "segmentation fault"
+        - "index out of range"
+        - "out of memory"
+        - "panic"
+        - "goroutine leak"
+        - "nil pointer"
+        - "deadlock"
+      required_confidence: 0.75
+      auto_fix: true
+    medium:
+      error_patterns:
+        - "type assertion"
+        - "race condition"
+        - "timeout"
+        - "resource leak"
+      required_confidence: 0.70
+      auto_fix: "follow_autonomy"
+    low:
+      error_patterns:
+        - "warning"
+        - "deprecation"
+        - "lint error"
+      required_confidence: 0.60
+      auto_fix: false
+
+pattern_cache:
+  similarity_threshold: 0.70
+
+context_retrieval:
+  max_workers: 4
+  grep_timeout: 30
+  max_function_lines: 50
+  max_callers: 5
+  max_keyword_matches: 10
+  strip_comments: true
+  max_context_tokens: 4000
+  token_allocation:
+    error_logs: 0.30
+    definitions: 0.35
+    callers: 0.15
+    keywords: 0.10
+    git_changes: 0.10
+
+github:
+  reviewers:
+    - "maintainer_1"
+    - "maintainer_2"
+  labels:
+    - "agent-generated"
+    - "incident-response"
+  issue_labels:
+    - "needs-review"
+    - "incident"
+
+logging:
+  level: "INFO"
+  file: "logs/kronos.log"
+  json_format: true
