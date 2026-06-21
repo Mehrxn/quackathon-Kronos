@@ -195,36 +195,59 @@ class Diagnoser:
         await self._client.aclose()
 
     async def _call(self, prompt: str, *, schema: Optional[dict] = None) -> str:
-        """Single Gemini generateContent call. Returns concatenated text.
+        """Single Gemini generateContent call with a robust retry mechanism."""
+        import asyncio
+        import random
 
-        When `schema` is provided we use Gemini's responseSchema +
-        responseMimeType=application/json so the model emits structured
-        JSON in a predictable field order.
-        """
         gen_config: dict = {
             "temperature": self.temperature,
             "maxOutputTokens": self.max_tokens,
-            # Disable thinking — see _THINKING_OFF comment above.
-            "thinkingConfig": _THINKING_OFF,
         }
         if schema is not None:
             gen_config["responseMimeType"] = "application/json"
             gen_config["responseSchema"] = schema
+
         body = {
             "system_instruction": {"parts": [{"text": _SYSTEM}]},
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": gen_config,
         }
         url = f"{_GEMINI_BASE}/{self.model}:generateContent"
-        resp = await self._client.post(
-            url,
-            headers={
-                "x-goog-api-key": self.api_key,
-                "content-type": "application/json",
-            },
-            json=body,
-        )
-        resp.raise_for_status()
+
+        max_attempts = 5
+        base_delay = 15.0
+        max_delay = 60.0
+
+        for attempt in range(1, max_attempts + 1):
+            resp = await self._client.post(
+                url,
+                headers={
+                    "x-goog-api-key": self.api_key,
+                    "content-type": "application/json",
+                },
+                json=body,
+            )
+
+            # Success! Break the loop.
+            if resp.status_code == 200:
+                break
+
+            # If it's a fatal error OR we ran out of attempts, crash.
+            if resp.status_code != 429 or attempt == max_attempts:
+                resp.raise_for_status()
+
+            # If it's a 429, wait and retry.
+            delay = min(max_delay, base_delay * (2 ** (attempt - 1)))
+            delay += random.uniform(0.5, 2.0)
+
+            log.warning(
+                "Gemini hit a 429 rate limit. Cooling down for %.1fs (Attempt %d/%d)",
+                delay,
+                attempt,
+                max_attempts,
+            )
+            await asyncio.sleep(delay)
+
         data = resp.json()
         candidates = data.get("candidates", [])
         if not candidates:

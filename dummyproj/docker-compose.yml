@@ -80,6 +80,8 @@ services:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana/dashboards/ai-agent-dashboard.json:/var/lib/grafana/dashboards/ai-agent-dashboard.json
+      # Added alerting provisioning file below
+      - ./grafanaAlerting.yaml:/etc/grafana/provisioning/alerting/grafanaAlerting.yaml:ro
     ports:
       - "3001:3000"
     networks:
@@ -98,7 +100,7 @@ services:
     command: node server.js
     environment:
       - LOKI_URL=http://loki:3100
-      - AGENT_URL=http://host.docker.internal:8000/api/v1/incidents/webhook
+      - AGENT_URL=http://host.docker.internal:8001/api/v1/init/    
     ports:
       - "8085:8080"
     extra_hosts:

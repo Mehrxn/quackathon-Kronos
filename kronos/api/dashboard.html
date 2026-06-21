@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kronos Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 2rem; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; display: flex; align-items: center; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+        .card { background: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; text-align: center; }
+        .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;}
+        .card .value { font-size: 1.8rem; font-weight: bold; color: #2c3e50; }
+        .card .sub-text { font-size: 0.85rem; color: #888; margin-top: 5px; }
+        .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: #2ecc71; margin-right: 12px; }
+        .status-dot.degraded { background: #f39c12; }
+        .status-dot.offline { background: #e74c3c; }
+        .checks-list { text-align: left; margin-top: 10px; font-size: 0.9rem; }
+        .check-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed #eee;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span id="status-indicator" class="status-dot offline"></span>Kronos Dashboard</h1>
+        
+        <div class="status-grid">
+            <div class="card">
+                <h3>System Health</h3>
+                <div class="value" id="system-health">Loading...</div>
+                <div class="checks-list" id="health-checks"></div>
+            </div>
+            
+            <div class="card">
+                <h3>Total Incidents</h3>
+                <div class="value" id="total-incidents">--</div>
+                <div class="sub-text">Managed by Orchestrator</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchDashboardData() {
+            try {
+                // 1. Fetch Health Data
+                const healthRes = await fetch('/api/v1/health');
+                if (!healthRes.ok) throw new Error("Health endpoint failing");
+                const healthData = await healthRes.json();
+                
+                // Update Health UI
+                const healthEl = document.getElementById('system-health');
+                const dotEl = document.getElementById('status-indicator');
+                
+                healthEl.textContent = healthData.status.toUpperCase();
+                if (healthData.status === 'ok') {
+                    dotEl.className = 'status-dot';
+                    healthEl.style.color = '#2ecc71';
+                } else {
+                    dotEl.className = 'status-dot degraded';
+                    healthEl.style.color = '#f39c12';
+                }
+
+                // Update Integrations Checks
+                const checksContainer = document.getElementById('health-checks');
+                checksContainer.innerHTML = '';
+                for (const [service, isUp] of Object.entries(healthData.checks)) {
+                    checksContainer.innerHTML += `
+                        <div class="check-item">
+                            <span>${service}</span>
+                            <span style="color: ${isUp ? '#2ecc71' : '#e74c3c'}">${isUp ? 'OK' : 'MISSING'}</span>
+                        </div>
+                    `;
+                }
+
+                // 2. Fetch Incidents Data
+                const incidentsRes = await fetch('/api/v1/incidents/?limit=1');
+                if (incidentsRes.ok) {
+                    const incidentsData = await incidentsRes.json();
+                    document.getElementById('total-incidents').textContent = incidentsData.total;
+                }
+
+            } catch (error) {
+                console.error("Dashboard error:", error);
+                document.getElementById('system-health').textContent = 'OFFLINE';
+                document.getElementById('system-health').style.color = '#e74c3c';
+                document.getElementById('status-indicator').className = 'status-dot offline';
+                document.getElementById('health-checks').innerHTML = '';
+            }
+        }
+
+        // Run immediately, then poll every 5 seconds
+        fetchDashboardData();
+        setInterval(fetchDashboardData, 5000);
+    </script>
+</body>
+</html>
