@@ -47,9 +47,11 @@ class GitHubClient:
 
         self._gh = None
         self._repo = None
+        self._gh = None
+        self._repo = None
         if _HAS_PYGITHUB and self.token:
             try:
-                self._gh = Github(self.token)
+                self._gh = Github(self.token, timeout=15, retry=3)
                 self._repo = self._gh.get_repo(self.full_name)
             except GithubException as e:
                 log.warning("GitHub API init failed: %s", e)
@@ -163,7 +165,7 @@ class GitHubClient:
                     if "@agent: ignore" in text or "@agent:ignore" in text:
                         return "ignore"
                 seen = len(comments)
-            except GithubException as e:
+            except Exception as e:  # noqa: BLE001 - connection drops, rate limits, etc.
                 log.warning("issue poll error: %s", e)
             time.sleep(interval)
         return "timeout"
