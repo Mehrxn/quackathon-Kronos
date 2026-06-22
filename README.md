@@ -10,13 +10,13 @@ Kronos is an autonomous SRE agent built for the hackathon. It plugs into your ex
 
 ## Why Kronos wins
 
-| Problem | Kronos answer |
-|---|---|
-| On-call gets paged, spends 45 min grepping logs and Slack | Parses errors in milliseconds, retrieves relevant code in parallel |
-| Generic AI agents hallucinate fixes on whole repos | Budgeted chunk assembly — only definitions, callers, and keywords that match the error |
-| Auto-fix bots merge broken code | Confirmation test must reproduce the bug; full test + build gate before any PR |
-| Same incident fires every deploy | Parcle memory layer — second occurrence skips diagnosis via pattern cache |
-| Teams don't trust full autonomy | Configurable decision matrix: high → PR, medium → PR or issue, low → issue only |
+| Problem                                                   | Kronos answer                                                                          |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| On-call gets paged, spends 45 min grepping logs and Slack | Parses errors in milliseconds, retrieves relevant code in parallel                     |
+| Generic AI agents hallucinate fixes on whole repos        | Budgeted chunk assembly — only definitions, callers, and keywords that match the error |
+| Auto-fix bots merge broken code                           | Confirmation test must reproduce the bug; full test + build gate before any PR         |
+| Same incident fires every deploy                          | Parcle memory layer — second occurrence skips diagnosis via pattern cache              |
+| Teams don't trust full autonomy                           | Configurable decision matrix: high → PR, medium → PR or issue, low → issue only        |
 
 ---
 
@@ -59,11 +59,11 @@ Grafana alert / webhook
 
 The **decision matrix** (`kronos/agent/decision.py`) reconciles log-derived priority hints with the LLM's independent classification. A failed confirmation test or low confidence always routes to an issue.
 
-| Priority | `full_autonomous=true` | `full_autonomous=false` |
-|---|---|---|
-| **high** | Fix → test → build → **PR** | Fix → test → build → **PR** (bypasses flag) |
-| **medium** | Fix → test → build → **PR** | Confirm → **issue** → tag maintainers |
-| **low** | Confirm → **issue** → tag | Confirm → **issue** → tag |
+| Priority   | `full_autonomous=true`      | `full_autonomous=false`                     |
+| ---------- | --------------------------- | ------------------------------------------- |
+| **high**   | Fix → test → build → **PR** | Fix → test → build → **PR** (bypasses flag) |
+| **medium** | Fix → test → build → **PR** | Confirm → **issue** → tag maintainers       |
+| **low**    | Confirm → **issue** → tag   | Confirm → **issue** → tag                   |
 
 When routed to an issue, maintainers can reply `@agent: fix` or `@agent: ignore` — Kronos polls and acts accordingly.
 
@@ -80,7 +80,7 @@ Fingerprint = `alert_type + sorted functions + error types`. Exact match → use
 ```bash
 git clone https://github.com/Nurysso/quackathon-Kronos.git
 cd quackathon-Kronos
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ### 2. Configure
@@ -95,19 +95,21 @@ set -a && source .env && set +a
 ### 3. Run
 
 ```bash
-python main.py                # API + dashboard on :8000
+uv run main.py                # API + dashboard on :8000 or whatever you kept in .env
 ```
 
 Open **http://localhost:8000/dashboard** for the live incident board.
+Open **http://localhost:8000/api/docs** for api documentaion [Swagger UI]
+Open **http://localhost:8000/api/redocs** for redoc styled documentaion.
 
 ### 4. Demo (two terminals)
 
 ```bash
 # Terminal 1
-python main.py
+uv run main.py
 
 # Terminal 2 — fires the same incident twice
-python demo.py
+uv run demo.py
 ```
 
 **First run:** full retrieval → diagnosis → fix/issue path (watch chunks, confidence, and routing in the dashboard).
@@ -131,17 +133,17 @@ cd dummyproj && docker-compose up -d
 
 ## API reference
 
-| Method | Path | Purpose |
-|---|---|---|
-| `POST` | `/api/v1/init/` | Primary Grafana webhook; returns `{incident_id, status}` immediately |
-| `POST` | `/api/v1/quick-incident/` | Manual trigger `{error_logs, priority}` (skips Loki) |
-| `GET` | `/api/v1/incidents/` | Paginated list, filter by `status` / `priority` |
-| `GET` | `/api/v1/incidents/{id}/` | Single incident status + PR/issue URL |
-| `GET` | `/api/v1/incidents/{id}/diagnosis` | Root cause, confidence, retrieved chunks, trace |
-| `POST` | `/api/v1/incidents/{id}/approve` · `/ignore` | Maintainer control |
-| `GET` | `/api/v1/health` | GitHub / Loki / LLM / Parcle reachability |
-| `GET` | `/api/v1/rules` | Current priority rule patterns |
-| `GET` | `/dashboard` | Live incident dashboard |
+| Method | Path                                         | Purpose                                                              |
+| ------ | -------------------------------------------- | -------------------------------------------------------------------- |
+| `POST` | `/api/v1/init/`                              | Primary Grafana webhook; returns `{incident_id, status}` immediately |
+| `POST` | `/api/v1/quick-incident/`                    | Manual trigger `{error_logs, priority}` (skips Loki)                 |
+| `GET`  | `/api/v1/incidents/`                         | Paginated list, filter by `status` / `priority`                      |
+| `GET`  | `/api/v1/incidents/{id}/`                    | Single incident status + PR/issue URL                                |
+| `GET`  | `/api/v1/incidents/{id}/diagnosis`           | Root cause, confidence, retrieved chunks, trace                      |
+| `POST` | `/api/v1/incidents/{id}/approve` · `/ignore` | Maintainer control                                                   |
+| `GET`  | `/api/v1/health`                             | GitHub / Loki / LLM / Parcle reachability                            |
+| `GET`  | `/api/v1/rules`                              | Current priority rule patterns                                       |
+| `GET`  | `/dashboard`                                 | Live incident dashboard                                              |
 
 ---
 
@@ -151,7 +153,7 @@ Everything is driven by `config.yaml` (env vars via `${VAR}`):
 
 ```yaml
 autonomy:
-  full_autonomous: true       # medium incidents → PR instead of issue
+  full_autonomous: true # medium incidents → PR instead of issue
 
 rules:
   priority:
@@ -159,14 +161,14 @@ rules:
       required_confidence: 0.75
     medium:
       required_confidence: 0.70
-      auto_fix: "follow_autonomy"   # respects full_autonomous flag
+      auto_fix: 'follow_autonomy' # respects full_autonomous flag
 
 context_retrieval:
   max_context_tokens: 4000
   max_workers: 4
 
 code_style:
-  language: "python"          # also: go, javascript, typescript, java, rust
+  language: 'python' # also: go, javascript, typescript, java, rust
 ```
 
 ### Dev notifications (Slack / email)
@@ -176,7 +178,7 @@ Keep the team in the loop without watching the dashboard:
 ```yaml
 notifications:
   enabled: true
-  min_priority: "medium"      # only notify for medium+ incidents
+  min_priority: 'medium' # only notify for medium+ incidents
   events:
     - diagnosis_complete
     - pr_opened
@@ -184,17 +186,17 @@ notifications:
     - failed
   slack:
     enabled: true
-    webhook_url: "${SLACK_WEBHOOK_URL}"
-    mention: "<!channel>"
+    webhook_url: '${SLACK_WEBHOOK_URL}'
+    mention: '<!channel>'
   email:
     enabled: true
-    smtp_host: "smtp.gmail.com"
+    smtp_host: 'smtp.gmail.com'
     smtp_port: 587
-    smtp_user: "${SMTP_USER}"
-    smtp_password: "${SMTP_PASSWORD}"
-    from_address: "kronos@yourcompany.com"
+    smtp_user: '${SMTP_USER}'
+    smtp_password: '${SMTP_PASSWORD}'
+    from_address: 'kronos@yourcompany.com'
     to_addresses:
-      - "oncall@yourcompany.com"
+      - 'oncall@yourcompany.com'
 ```
 
 Notifications fire at each lifecycle stage: incident started, diagnosis complete, fix in progress, PR/issue opened, resolved, failed, or ignored.
@@ -223,7 +225,7 @@ config.yaml.example All tunables
 - **LLM providers:** Claude, Gemini, DeepSeek, local models
 - **GitHub:** PyGithub + local git (branch, commit, push, PR, issue)
 - **Memory:** Parcle (remote API + SQLite fallback)
-- **Observability:** Loki log pull, Grafana webhook ingestion
+- **Observability:** Loki log pull, Grafana webhook ingestion, or direct interaction via
 
 ---
 

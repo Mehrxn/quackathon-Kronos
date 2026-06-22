@@ -19,6 +19,11 @@ scrape_configs:
         target_label: 'container'
       - source_labels: ['__meta_docker_container_id']
         target_label: 'container_id'
+      # Label ai-agent-backend container with service_name
+      - source_labels: ['__meta_docker_container_name']
+        regex: '.*(ai-agent-backend|dummyBackend).*'
+        target_label: 'service_name'
+        replacement: 'ai-agent-backend'
     pipeline_stages:
       - json:
           expressions:
@@ -26,10 +31,12 @@ scrape_configs:
             level: level
             message: message
             logger: logger
+            service_name: service_name
       - labels:
           level:
           logger:
           container:
+          service_name:
       - timestamp:
           source: timestamp
-          format: RFC3339
+          format: RFC3339Nano

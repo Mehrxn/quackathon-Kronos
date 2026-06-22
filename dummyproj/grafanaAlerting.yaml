@@ -1,31 +1,3 @@
-# Grafana alerting provisioning for Kronos.
-#
-# Drop this into Grafana's provisioning path so it loads on startup. For the
-# containerized Grafana in your stack, mount it at:
-#   /etc/grafana/provisioning/alerting/kronos.yaml
-# e.g. in docker-compose:
-#   volumes:
-#     - ./grafana-alerting.yaml:/etc/grafana/provisioning/alerting/kronos.yaml:ro
-# then restart the grafana container.
-#
-# IMPORTANT — two things you MUST verify before this works:
-#
-# 1. LOKI DATASOURCE UID. The rules reference datasourceUid: P8E80F9AEF21F6940. Your actual
-#    UID may differ. Find it: Grafana (http://localhost:3001) -> Connections ->
-#    Data sources -> Loki -> the UID is in the URL / settings. Replace every
-#    "loki" datasourceUid below with that value, OR set the Loki datasource's
-#    uid explicitly to "loki" in its own provisioning file.
-#
-# 2. LOG LABEL. Every query uses {service_name="ai-agent-backend"}. Confirm in Grafana
-#    Explore (Loki -> label browser) that your logs actually carry app=...
-#    If Promtail labels them container=... or service=..., change the selector
-#    in all four expr blocks to match, and keep it consistent with
-#    webhook.js's appName resolution.
-#
-# Each rule counts matching log lines in a 1m window and fires when > 0, with
-# for: 0s so it triggers on the first occurrence (good for live demos).
-# The alertname label on each rule is what webhook.js routes on.
-
 apiVersion: 1
 
 groups:
@@ -46,16 +18,17 @@ groups:
           priority: high
         annotations:
           summary: Segmentation fault (SIGSEGV) detected in dummyBackend
+          description: '{{ $labels.container }} crashed with segfault'
         data:
           - refId: count
             relativeTimeRange:
               from: 120
               to: 0
-            datasourceUid: P8E80F9AEF21F6940
+            datasourceUid: loki
             model:
               datasource:
                 type: loki
-                uid: P8E80F9AEF21F6940
+                uid: loki
               expr: 'sum(count_over_time({service_name="ai-agent-backend"} |~ "(?i)(segfault|sigsegv|fatal|crash|dereference)" [1m]))'
               queryType: instant
               refId: count
@@ -85,16 +58,17 @@ groups:
           priority: high
         annotations:
           summary: Index out of range / out of bounds detected in dummyBackend
+          description: '{{ $labels.container }} threw an IndexError or OutOfBoundsException'
         data:
           - refId: count
             relativeTimeRange:
               from: 120
               to: 0
-            datasourceUid: P8E80F9AEF21F6940
+            datasourceUid: loki
             model:
               datasource:
                 type: loki
-                uid: P8E80F9AEF21F6940
+                uid: loki
               expr: 'sum(count_over_time({service_name="ai-agent-backend"} |~ "(?i)(indexerror|index out of range|out of bounds|outofindex)" [1m]))'
               queryType: instant
               refId: count
@@ -124,16 +98,17 @@ groups:
           priority: medium
         annotations:
           summary: Critically high memory usage in dummyBackend
+          description: '{{ $labels.container }} memory usage critical (>95%)'
         data:
           - refId: count
             relativeTimeRange:
               from: 120
               to: 0
-            datasourceUid: P8E80F9AEF21F6940
+            datasourceUid: loki
             model:
               datasource:
                 type: loki
-                uid: P8E80F9AEF21F6940
+                uid: loki
               expr: 'sum(count_over_time({service_name="ai-agent-backend"} |~ "(?i)(high ram alert|memory usage is critically|out of memory|oom)" [1m]))'
               queryType: instant
               refId: count
@@ -163,16 +138,17 @@ groups:
           priority: medium
         annotations:
           summary: Critically high vCPU utilization in dummyBackend
+          description: '{{ $labels.container }} CPU throttling likely (>95%)'
         data:
           - refId: count
             relativeTimeRange:
               from: 120
               to: 0
-            datasourceUid: P8E80F9AEF21F6940
+            datasourceUid: loki
             model:
               datasource:
                 type: loki
-                uid: P8E80F9AEF21F6940
+                uid: loki
               expr: 'sum(count_over_time({service_name="ai-agent-backend"} |~ "(?i)(high cpu alert|vcpu utilization|cpu throttl|throttle)" [1m]))'
               queryType: instant
               refId: count
@@ -191,10 +167,8 @@ groups:
               refId: threshold
 
 ---
-# Contact point: where Grafana POSTs the alert. This points at your
-# webhook-server container by its service name on the internal Docker network
-# (container port 8080). If Grafana and webhook-server are NOT on the same
-# network, use the host route instead: http://host.docker.internal:8085
+# Contact point: where Grafana POSTs the alert.
+# Points to Kronos /api/v1/init/ endpoint
 apiVersion: 1
 
 contactPoints:
@@ -204,18 +178,17 @@ contactPoints:
       - uid: kronos-webhook-rcv
         type: webhook
         settings:
-          url: http://webhook-server:8080
+          url: http://kronos:8001/api/v1/init/
           httpMethod: POST
 
 ---
-# Notification policy: route everything in the Kronos folder to the webhook,
-# with minimal grouping delay so the demo fires promptly.
+# Notification policy: route Kronos alerts to webhook
 apiVersion: 1
 
 policies:
   - orgId: 1
     receiver: kronos-webhook
-    group_by: ["alertname"]
+    group_by: ['alertname']
     group_wait: 0s
     group_interval: 10s
     repeat_interval: 1h
