@@ -46,7 +46,14 @@ async def lifespan(app: FastAPI):
         log.info("Kronos stopped")
 
 
-app = FastAPI(title="Kronos", version="1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Kronos",
+    version="0.3.0",
+    description="Autonomous Incident Response Agent",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    lifespan=lifespan
+)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -54,8 +61,8 @@ async def get_dashboard():
     """Serves the static HTML dashboard."""
     # This assumes dashboard.html is in the same directory as this app.py file.
     # Adjust the path if you place it in a templates/ or static/ folder.
-    html_path = Path(__file__).parent / "dashboard.html" 
-    
+    html_path = Path(__file__).parent / "dashboard.html"
+
     try:
         with open(html_path, "r") as f:
             return f.read()
