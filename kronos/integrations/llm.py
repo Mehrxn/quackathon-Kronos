@@ -1,41 +1,38 @@
-"""Diagnosis — single chain-of-thought Gemini call per incident.
+"""LLM integration module with support for multiple providers.
 
-The prompt asks the model to reason step-by-step about root cause, give a
-confidence score, independently classify priority, and propose a minimal
-confirmation test. The response is parsed as structured JSON. If a fuzzy
-cache hint is present it is injected as a prior.
-
-Uses the Gemini API (generativelanguage.googleapis.com). The public
-interface (Diagnoser.diagnose / generate_fix / close) is unchanged, so the
-rest of the agent is unaffected.
+This module provides a unified interface for interacting with various LLM
+providers including Gemini, Claude, DeepSeek, and local models.
+It also includes the Diagnoser class for incident diagnosis.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
-from typing import Optional
-
-import httpx
+from typing import Optional, Dict, Any
 
 from kronos.config import Config
+from kronos.integrations.llm_providers import (
+    LLMProvider,
+    GeminiProvider,
+    ClaudeProvider,
+    DeepSeekProvider,
+    LocalProvider,
+)
 from kronos.models import Diagnosis, Priority
 
-log = logging.getLogger("kronos.diagnose")
+log = logging.getLogger("kronos.integrations.llm")
 
-_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-
+# System prompt for diagnosis
 _SYSTEM = """You are Kronos, an autonomous incident-response engineer.
 You receive error logs and the minimal relevant code context for a software
 incident. Diagnose the root cause precisely. You MUST respond with a single
 JSON object and nothing else — no markdown fences, no prose around it.
 Keep all fields concise; reasoning under 80 words."""
 
-# Schema enforced via Gemini's responseSchema. propertyOrdering puts the
-# critical fields FIRST so that if the model is still cut off by a token
-# limit, we lose `reasoning` (least important) instead of `root_cause` or
-# `confidence`.
+# Schema for diagnosis response
 _DIAG_SCHEMA = {
     "type": "object",
     "properties": {
@@ -57,6 +54,7 @@ _DIAG_SCHEMA = {
     ],
 }
 
+# Schema for fix generation
 _FIX_SCHEMA = {
     "type": "object",
     "properties": {
@@ -88,15 +86,6 @@ _FIX_SCHEMA = {
     "required": ["summary", "files"],
     "propertyOrdering": ["summary", "files", "test_files"],
 }
-
-# gemini-2.5-flash is a thinking model: by default it spends most of
-# maxOutputTokens on hidden reasoning BEFORE emitting any output, which is
-# why responses get truncated mid-string. We disable thinking explicitly so
-# every token in the budget goes to the JSON.
-_THINKING_OFF = {"thinkingBudget": 0}
-
-# Floor on output tokens — below this, diagnosis JSON routinely truncates.
-_MIN_OUTPUT_TOKENS = 4000
 
 _PROMPT_TEMPLATE = """An incident has fired for service `{service}`.
 
@@ -170,94 +159,186 @@ def _extract_json(text: str) -> dict:
     return json.loads(repaired)
 
 
-class Diagnoser:
-    def __init__(self, config: Config):
-        cc = config.claude
-        self.api_key = cc["api_key"]
-        self.model = cc["model"]
-        configured = cc.get("max_tokens", 2000)
-        # Enforce a floor — gemini-2.5-flash needs headroom or its JSON
-        # output gets truncated mid-string (see the log we just debugged).
-        self.max_tokens = max(configured, _MIN_OUTPUT_TOKENS)
-        if configured < _MIN_OUTPUT_TOKENS:
-            log.warning(
-                "config max_tokens=%d raised to floor %d to avoid "
-                "truncated diagnosis output",
-                configured,
-                _MIN_OUTPUT_TOKENS,
-            )
-        self.temperature = cc.get("temperature", 0.2)
-        self.timeout = cc.get("timeout", 60)
-        self.language = config.code_style.get("language", "go")
-        self._client = httpx.AsyncClient(timeout=self.timeout)
+def create_llm_provider(config: Optional[Config] = None, **kwargs) -> LLMProvider:
+    """Create an LLM provider based on configuration.
+
+    Args:
+        config: Optional Config object. If not provided, uses kwargs.
+        **kwargs: Direct provider configuration (overrides config if provided)
+
+    Returns:
+        LLMProvider instance
+
+    Raises:
+        ValueError: If provider type is unknown or required config is missing
+    """
+    # If config is provided, extract LLM config
+    if config:
+        llm_config = config.llm
+        provider_type = llm_config.get("provider", "gemini").lower()
+
+        # Common configs
+        model = llm_config.get("model", "gemini-2.0-flash")
+        max_tokens = llm_config.get("max_tokens", 4000)
+        temperature = llm_config.get("temperature", 0.2)
+        timeout = llm_config.get("timeout", 60)
+        api_key = llm_config.get("api_key")
+        base_url = llm_config.get("base_url")
+    else:
+        # Use kwargs directly
+        provider_type = kwargs.get("provider", "gemini").lower()
+        model = kwargs.get("model", "gemini-2.0-flash")
+        max_tokens = kwargs.get("max_tokens", 4000)
+        temperature = kwargs.get("temperature", 0.2)
+        timeout = kwargs.get("timeout", 60)
+        api_key = kwargs.get("api_key")
+        base_url = kwargs.get("base_url")
+
+    # Create provider
+    if provider_type == "gemini":
+        api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("Gemini API key required. Set GEMINI_API_KEY env var or provide in config.")
+        return GeminiProvider(
+            api_key=api_key,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            timeout=timeout,
+        )
+
+    elif provider_type == "claude":
+        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("Claude API key required. Set ANTHROPIC_API_KEY env var or provide in config.")
+        return ClaudeProvider(
+            api_key=api_key,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            timeout=timeout,
+        )
+
+    elif provider_type == "deepseek":
+        api_key = api_key or os.environ.get("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise ValueError("DeepSeek API key required. Set DEEPSEEK_API_KEY env var or provide in config.")
+        return DeepSeekProvider(
+            api_key=api_key,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            timeout=timeout,
+        )
+
+    elif provider_type == "local":
+        base_url = base_url or os.environ.get("LOCAL_LLM_URL", "http://localhost:8080/v1")
+        # FIXED: Changed 'returns' to 'return'
+        return LocalProvider(
+            base_url=base_url,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            timeout=timeout,
+        )
+
+    else:
+        raise ValueError(f"Unknown LLM provider: {provider_type}")
+
+
+class LLMClient:
+    """Wrapper class for LLM provider with additional utilities."""
+
+    def __init__(self, provider: LLMProvider):
+        self.provider = provider
+
+    @classmethod
+    def from_config(cls, config: Config) -> "LLMClient":
+        """Create LLMClient from config."""
+        provider = create_llm_provider(config)
+        return cls(provider)
+
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        schema: Optional[Dict[str, Any]] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> str:
+        """Generate a response using the configured provider."""
+        return await self.provider.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            schema=schema,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
 
     async def close(self) -> None:
-        await self._client.aclose()
+        """Clean up resources."""
+        await self.provider.close()
+
+    async def generate_json(
+        self,
+        prompt: str,
+        system_prompt: str,
+        schema: Dict[str, Any],
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Generate a JSON response with schema validation."""
+        response = await self.generate(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            schema=schema,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        return json.loads(response)
+
+
+class Diagnoser:
+    """Main diagnosis class that uses LLM providers for incident analysis."""
+
+    def __init__(self, config: Config):
+        """Initialize Diagnoser with configuration.
+
+        Args:
+            config: Kronos configuration object
+        """
+        # Create the LLM provider from config
+        self.llm = create_llm_provider(config)
+        self.language = config.code_style.get("language", "go")
+        # Store schemas for reference
+        self.diag_schema = _DIAG_SCHEMA
+        self.fix_schema = _FIX_SCHEMA
+
+    async def close(self) -> None:
+        """Clean up LLM provider resources."""
+        await self.llm.close()
 
     async def _call(self, prompt: str, *, schema: Optional[dict] = None) -> str:
-        """Single Gemini generateContent call with a robust retry mechanism."""
-        import asyncio
-        import random
-
-        gen_config: dict = {
-            "temperature": self.temperature,
-            "maxOutputTokens": self.max_tokens,
-        }
-        if schema is not None:
-            gen_config["responseMimeType"] = "application/json"
-            gen_config["responseSchema"] = schema
-
-        body = {
-            "system_instruction": {"parts": [{"text": _SYSTEM}]},
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": gen_config,
-        }
-        url = f"{_GEMINI_BASE}/{self.model}:generateContent"
-
-        max_attempts = 5
-        base_delay = 15.0
-        max_delay = 60.0
-
-        for attempt in range(1, max_attempts + 1):
-            resp = await self._client.post(
-                url,
-                headers={
-                    "x-goog-api-key": self.api_key,
-                    "content-type": "application/json",
-                },
-                json=body,
-            )
-
-            # Success! Break the loop.
-            if resp.status_code == 200:
-                break
-
-            # If it's a fatal error OR we ran out of attempts, crash.
-            if resp.status_code != 429 or attempt == max_attempts:
-                resp.raise_for_status()
-
-            # If it's a 429, wait and retry.
-            delay = min(max_delay, base_delay * (2 ** (attempt - 1)))
-            delay += random.uniform(0.5, 2.0)
-
-            log.warning(
-                "Gemini hit a 429 rate limit. Cooling down for %.1fs (Attempt %d/%d)",
-                delay,
-                attempt,
-                max_attempts,
-            )
-            await asyncio.sleep(delay)
-
-        data = resp.json()
-        candidates = data.get("candidates", [])
-        if not candidates:
-            return ""
-        parts = candidates[0].get("content", {}).get("parts", [])
-        return "".join(p.get("text", "") for p in parts)
+        """Call the LLM provider with system prompt and schema."""
+        return await self.llm.generate(
+            prompt=prompt,
+            system_prompt=_SYSTEM,
+            schema=schema,
+        )
 
     async def diagnose(
         self, *, service: str, context: str, fuzzy_hint: Optional[str] = None
     ) -> Diagnosis:
+        """Diagnose an incident from context and optional fuzzy hint.
+
+        Args:
+            service: Name of the service experiencing the incident
+            context: Assembled context (logs, code, etc.)
+            fuzzy_hint: Optional prior from similar past incidents
+
+        Returns:
+            Diagnosis object with root cause, confidence, priority, etc.
+        """
         hint_block = ""
         if fuzzy_hint:
             hint_block = (
@@ -299,7 +380,16 @@ class Diagnoser:
     async def generate_fix(
         self, *, context: str, diagnosis: Diagnosis, prior_failure: Optional[str] = None
     ) -> dict:
-        """Generate a code fix + regression test. Returns parsed JSON dict."""
+        """Generate a code fix + regression test. Returns parsed JSON dict.
+
+        Args:
+            context: Code context for the fix
+            diagnosis: Diagnosis object from diagnose() call
+            prior_failure: Optional output from previous failed fix attempt
+
+        Returns:
+            Dictionary with 'files', 'test_files', and 'summary' keys
+        """
         retry_block = ""
         if prior_failure:
             retry_block = (

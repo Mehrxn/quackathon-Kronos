@@ -65,6 +65,10 @@ class Config:
         return self.raw["loki"]
 
     @property
+    def llm(self) -> dict:
+        return self.raw["llm"]
+
+    @property
     def claude(self) -> dict:
         return self.raw["claude"]
 
@@ -107,7 +111,7 @@ class Config:
 
 _REQUIRED_SECTIONS = [
     "repository",
-    "loki",
+    "loki"
     "claude",
     "parcle",
     "autonomy",
