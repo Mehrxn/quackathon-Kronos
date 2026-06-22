@@ -6,6 +6,7 @@ from kronos.integrations.llm import LLMClient, create_llm_provider
 from kronos.integrations.llm import Diagnoser
 from kronos.integrations.loki import LokiClient
 from kronos.integrations.github_client import GitHubClient
+from kronos.integrations.notifications import DevNotifier, NotificationEvent
 
 
 __all__ = [
@@ -16,6 +17,8 @@ __all__ = [
     "Diagnoser",
     "LokiClient",
     "GitHubClient",
+    "DevNotifier",
+    "NotificationEvent",
     "LLMClient",
-    "create_llm_provider"
+    "create_llm_provider",
 ]

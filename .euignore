@@ -1,0 +1,11 @@
+# Eulix ignore patterns
+node_modules/
+.git/
+*.test.go
+vendor/
+dist/
+test/
+build/
+dummyproj/
+test_*
+demo.py

@@ -3,94 +3,715 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kronos Dashboard</title>
+    <title>Kronos — Incident Dashboard</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; color: #333; margin: 0; padding: 2rem; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; display: flex; align-items: center; }
-        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
-        .card { background: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; text-align: center; }
-        .card h3 { margin: 0 0 10px 0; font-size: 1rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;}
-        .card .value { font-size: 1.8rem; font-weight: bold; color: #2c3e50; }
-        .card .sub-text { font-size: 0.85rem; color: #888; margin-top: 5px; }
-        .status-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: #2ecc71; margin-right: 12px; }
-        .status-dot.degraded { background: #f39c12; }
-        .status-dot.offline { background: #e74c3c; }
-        .checks-list { text-align: left; margin-top: 10px; font-size: 0.9rem; }
-        .check-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed #eee;}
+        :root {
+            --bg: #0f1117;
+            --surface: #161b22;
+            --surface2: #1c2129;
+            --border: #30363d;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --yellow: #d29922;
+            --red: #f85149;
+            --purple: #bc8cff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+        header h1 {
+            font-size: 1.1rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 600;
+        }
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--green);
+            flex-shrink: 0;
+        }
+        .status-dot.degraded { background: var(--yellow); }
+        .status-dot.offline { background: var(--red); }
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .badge {
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .badge.ok { background: rgba(63,185,80,.15); color: var(--green); }
+        .badge.degraded { background: rgba(210,153,34,.15); color: var(--yellow); }
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+            flex-wrap: wrap;
+        }
+        .toolbar label { font-size: 0.8rem; color: var(--muted); }
+        select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+            min-width: 280px;
+        }
+        .incident-pills {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+        .pill {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+        .pill strong { color: var(--text); }
+        .pill.high { border-color: var(--red); color: var(--red); }
+        .pill.medium { border-color: var(--yellow); color: var(--yellow); }
+        .pill.low { border-color: var(--muted); }
+        .pill.status-processing { color: var(--accent); border-color: var(--accent); }
+        .pill.status-fixing { color: var(--purple); border-color: var(--purple); }
+        .pill.status-pr_opened, .pill.status-resolved { color: var(--green); border-color: var(--green); }
+        .pill.status-failed { color: var(--red); border-color: var(--red); }
+        .main {
+            display: grid;
+            grid-template-columns: 260px 1fr 320px;
+            gap: 0;
+            height: calc(100vh - 108px);
+        }
+        @media (max-width: 1100px) {
+            .main { grid-template-columns: 1fr; height: auto; }
+            .panel { min-height: 280px; }
+        }
+        .panel {
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .panel:last-child { border-right: none; }
+        .panel-head {
+            padding: 0.65rem 1rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            flex-shrink: 0;
+        }
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+        }
+        /* Pipeline steps */
+        .steps { list-style: none; margin: 0; padding: 0; }
+        .step {
+            display: flex;
+            gap: 0.65rem;
+            padding: 0.45rem 0;
+            position: relative;
+        }
+        .step:not(:last-child)::before {
+            content: "";
+            position: absolute;
+            left: 11px;
+            top: 26px;
+            bottom: -4px;
+            width: 2px;
+            background: var(--border);
+        }
+        .step.done:not(:last-child)::before { background: var(--green); opacity: 0.4; }
+        .step.active:not(:last-child)::before {
+            background: linear-gradient(var(--accent), var(--border));
+        }
+        .step-marker {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.65rem;
+            flex-shrink: 0;
+            background: var(--bg);
+            z-index: 1;
+        }
+        .step.pending .step-marker { color: var(--muted); }
+        .step.active .step-marker {
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88,166,255,.2);
+            animation: pulse 1.5s ease infinite;
+        }
+        .step.done .step-marker {
+            border-color: var(--green);
+            background: rgba(63,185,80,.15);
+            color: var(--green);
+        }
+        .step.failed .step-marker {
+            border-color: var(--red);
+            background: rgba(248,81,73,.15);
+            color: var(--red);
+        }
+        .step.skipped .step-marker {
+            border-color: var(--border);
+            color: var(--muted);
+            opacity: 0.5;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(88,166,255,.2); }
+            50% { box-shadow: 0 0 0 6px rgba(88,166,255,.08); }
+        }
+        .step-content { min-width: 0; flex: 1; }
+        .step-label {
+            font-size: 0.82rem;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+        .step.pending .step-label { color: var(--muted); }
+        .step.active .step-label { color: var(--accent); }
+        .step.done .step-label { color: var(--text); }
+        .step.failed .step-label { color: var(--red); }
+        .step-detail {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 0.15rem;
+            word-break: break-word;
+            font-family: ui-monospace, "Cascadia Code", monospace;
+        }
+        /* Log streams */
+        .log-stream {
+            font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+            font-size: 0.78rem;
+            line-height: 1.55;
+        }
+        .log-line {
+            padding: 0.2rem 0.45rem;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+        .log-line:hover { background: rgba(255,255,255,.04); }
+        .log-line .ts { color: var(--muted); margin-right: 0.5rem; }
+        .log-line.error { background: rgba(248,81,73,.1); color: #ffa198; }
+        .log-line.success { color: var(--green); }
+        .log-line.info { color: var(--accent); }
+        .log-line.warn { color: var(--yellow); }
+        .empty-state {
+            color: var(--muted);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+        /* Input logs + diagnosis */
+        .input-log {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.45rem 0.55rem;
+            margin-bottom: 0.4rem;
+            font-family: ui-monospace, monospace;
+            font-size: 0.74rem;
+            color: #ffa198;
+            word-break: break-word;
+        }
+        .diag-block {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+        .diag-block h4 {
+            margin: 0 0 0.4rem;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+        .diag-text {
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: var(--text);
+        }
+        .confidence-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin: 0.4rem 0 0.75rem;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            background: var(--green);
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+        .link-btn {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.35rem 0.65rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.78rem;
+        }
+        .link-btn:hover { border-color: var(--accent); }
+        .chunks-count {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 0.5rem;
+        }
+        .checks-inline { font-size: 0.75rem; color: var(--muted); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1><span id="status-indicator" class="status-dot offline"></span>Kronos Dashboard</h1>
-        
-        <div class="status-grid">
-            <div class="card">
-                <h3>System Health</h3>
-                <div class="value" id="system-health">Loading...</div>
-                <div class="checks-list" id="health-checks"></div>
-            </div>
-            
-            <div class="card">
-                <h3>Total Incidents</h3>
-                <div class="value" id="total-incidents">--</div>
-                <div class="sub-text">Managed by Orchestrator</div>
-            </div>
+    <header>
+        <h1>
+            <span id="status-indicator" class="status-dot offline"></span>
+            Kronos Incident Dashboard
+        </h1>
+        <div class="header-meta">
+            <span id="health-label">Checking…</span>
+            <span id="incident-count">0 incidents</span>
         </div>
+    </header>
+
+    <div class="toolbar">
+        <label for="incident-select">Active incident</label>
+        <select id="incident-select">
+            <option value="">— select or wait for incidents —</option>
+        </select>
+        <div class="incident-pills" id="incident-pills"></div>
+    </div>
+
+    <div class="main">
+        <!-- Left: orchestrator pipeline steps -->
+        <section class="panel">
+            <div class="panel-head">Orchestrator Pipeline</div>
+            <div class="panel-body">
+                <ul class="steps" id="pipeline-steps"></ul>
+            </div>
+        </section>
+
+        <!-- Center: live trace logs -->
+        <section class="panel">
+            <div class="panel-head">Live Trace · Orchestrator Logs</div>
+            <div class="panel-body">
+                <div class="log-stream" id="trace-logs">
+                    <div class="empty-state">Select an incident to watch the pipeline run.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right: input error logs + diagnosis -->
+        <section class="panel">
+            <div class="panel-head">Alert Logs &amp; Diagnosis</div>
+            <div class="panel-body" id="side-panel">
+                <div class="empty-state">Error logs and diagnosis appear here.</div>
+            </div>
+        </section>
     </div>
 
     <script>
-        async function fetchDashboardData() {
-            try {
-                // 1. Fetch Health Data
-                const healthRes = await fetch('/api/v1/health');
-                if (!healthRes.ok) throw new Error("Health endpoint failing");
-                const healthData = await healthRes.json();
-                
-                // Update Health UI
-                const healthEl = document.getElementById('system-health');
-                const dotEl = document.getElementById('status-indicator');
-                
-                healthEl.textContent = healthData.status.toUpperCase();
-                if (healthData.status === 'ok') {
-                    dotEl.className = 'status-dot';
-                    healthEl.style.color = '#2ecc71';
-                } else {
-                    dotEl.className = 'status-dot degraded';
-                    healthEl.style.color = '#f39c12';
+        /** Pipeline steps aligned with kronos/agent/orchestrator.py */
+        const PIPELINE_STEPS = [
+            {
+                id: "sync",
+                label: "Sync Repository",
+                patterns: [/Syncing repository/i],
+            },
+            {
+                id: "logs",
+                label: "Fetch Logs",
+                patterns: [/Pulling logs from Loki/i],
+                optional: true,
+            },
+            {
+                id: "parse",
+                label: "Parse Errors",
+                patterns: [/Parsed \d+ error pattern/i, /No logs available/i],
+            },
+            {
+                id: "cache",
+                label: "Pattern Cache Lookup",
+                patterns: [/Cache lookup:/i],
+            },
+            {
+                id: "retrieve",
+                label: "Code Retrieval",
+                patterns: [
+                    /Running error-based retrieval/i,
+                    /Assembled context from \d+ chunk/i,
+                    /Full autonomous mode: running fresh diagnosis/i,
+                ],
+            },
+            {
+                id: "diagnose",
+                label: "LLM Diagnosis",
+                patterns: [/Diagnosed: conf=/i, /Using cached root cause/i],
+            },
+            {
+                id: "confirm",
+                label: "Confirmation Test",
+                patterns: [/Running confirmation test/i, /Confirmation reproduced bug:/i],
+                optional: true,
+            },
+            {
+                id: "decide",
+                label: "Decision Matrix",
+                patterns: [/Decision: \w+/i],
+            },
+            {
+                id: "fix",
+                label: "Generate & Apply Fix",
+                patterns: [
+                    /Full autonomous: forcing auto-fix/i,
+                    /Fix generation attempt \d+/i,
+                    /Skipping test validation/i,
+                    /Tests failed, retrying/i,
+                    /Build failed, retrying/i,
+                    /Auto-fix failed after retries/i,
+                ],
+            },
+            {
+                id: "publish",
+                label: "Publish (PR / Issue)",
+                patterns: [
+                    /PR opened:/i,
+                    /Issue opened:/i,
+                    /Full autonomous: opening pull request/i,
+                    /Branch push failed/i,
+                ],
+            },
+            {
+                id: "learn",
+                label: "Learn & Resolve",
+                patterns: [/Recorded incident \+ rule/i, /Maintainer command:/i],
+            },
+        ];
+
+        const TERMINAL_STATUSES = new Set([
+            "resolved", "pr_opened", "issue_opened", "failed", "ignored",
+        ]);
+
+        let selectedId = null;
+        let pollTimer = null;
+        let lastTraceLen = 0;
+
+        function classifyLogLine(msg) {
+            if (/FAILED|failed|error|No logs available/i.test(msg)) return "error";
+            if (/PR opened|Issue opened|Recorded incident|Confirmation reproduced bug: True/i.test(msg)) return "success";
+            if (/Decision:|Diagnosed:|Cache lookup:/i.test(msg)) return "info";
+            if (/retrying|failed after retries|push failed/i.test(msg)) return "warn";
+            return "";
+        }
+
+        function matchStep(trace, step) {
+            const hits = [];
+            for (const line of trace) {
+                for (const pat of step.patterns) {
+                    if (pat.test(line)) {
+                        hits.push(line);
+                        break;
+                    }
+                }
+            }
+            return hits;
+        }
+
+        function computeStepStates(trace, status) {
+            const traceJoined = trace.join("\n");
+            const failedGlobal = status === "failed" || /FAILED:/i.test(traceJoined);
+
+            const states = PIPELINE_STEPS.map((step) => {
+                const hits = matchStep(trace, step);
+                let state = "pending";
+                let detail = "";
+
+                if (hits.length) {
+                    state = "done";
+                    detail = hits[hits.length - 1].replace(/^\d{2}:\d{2}:\d{2}\s+/, "");
                 }
 
-                // Update Integrations Checks
-                const checksContainer = document.getElementById('health-checks');
-                checksContainer.innerHTML = '';
-                for (const [service, isUp] of Object.entries(healthData.checks)) {
-                    checksContainer.innerHTML += `
-                        <div class="check-item">
-                            <span>${service}</span>
-                            <span style="color: ${isUp ? '#2ecc71' : '#e74c3c'}">${isUp ? 'OK' : 'MISSING'}</span>
+                // Mark failure on specific steps
+                if (/No logs available/i.test(traceJoined) && step.id === "parse") {
+                    state = "failed";
+                    detail = "No logs available; aborting";
+                }
+                if (/Auto-fix failed after retries/i.test(traceJoined) && step.id === "fix") {
+                    state = "failed";
+                }
+                if (/Branch push failed/i.test(traceJoined) && step.id === "publish") {
+                    state = "failed";
+                }
+                if (/FAILED:/i.test(traceJoined) && state === "pending" && failedGlobal) {
+                    // leave pending unless we know better
+                }
+
+                return { ...step, state, detail };
+            });
+
+            // Skipped optional steps
+            for (const s of states) {
+                if (s.optional && s.state === "pending" && TERMINAL_STATUSES.has(status)) {
+                    const idx = states.indexOf(s);
+                    const laterDone = states.slice(idx + 1).some((x) => x.state === "done");
+                    if (laterDone) s.state = "skipped";
+                }
+            }
+
+            // Active step: first pending after last done, if still running
+            if (!TERMINAL_STATUSES.has(status)) {
+                const lastDone = states.map((s, i) => (s.state === "done" ? i : -1)).filter((i) => i >= 0).pop();
+                const nextIdx = lastDone === undefined ? 0 : lastDone + 1;
+                if (nextIdx < states.length && states[nextIdx].state === "pending") {
+                    states[nextIdx].state = "active";
+                } else if (lastDone !== undefined && states[lastDone].state === "done") {
+                    // Status-based hint when trace hasn't caught up
+                    const hint = {
+                        processing: "sync",
+                        diagnosing: "cache",
+                        fixing: "fix",
+                        awaiting_approval: "publish",
+                    }[status];
+                    if (hint) {
+                        const h = states.find((s) => s.id === hint);
+                        if (h && h.state === "pending") h.state = "active";
+                    }
+                }
+            }
+
+            if (status === "failed" && !states.some((s) => s.state === "failed")) {
+                const active = states.find((s) => s.state === "active");
+                if (active) active.state = "failed";
+                else {
+                    const lastDone = [...states].reverse().find((s) => s.state === "done");
+                    if (lastDone) lastDone.state = "failed";
+                }
+            }
+
+            // Terminal: mark all reached steps done, clear active
+            if (TERMINAL_STATUSES.has(status)) {
+                for (const s of states) {
+                    if (s.state === "active") s.state = "done";
+                }
+            }
+
+            return states;
+        }
+
+        function renderSteps(states) {
+            const ul = document.getElementById("pipeline-steps");
+            ul.innerHTML = states.map((s, i) => {
+                const icon = s.state === "done" ? "✓" : s.state === "failed" ? "✕" : s.state === "active" ? "●" : s.state === "skipped" ? "–" : (i + 1);
+                return `
+                    <li class="step ${s.state}">
+                        <div class="step-marker">${icon}</div>
+                        <div class="step-content">
+                            <div class="step-label">${s.label}</div>
+                            ${s.detail ? `<div class="step-detail">${escapeHtml(s.detail)}</div>` : ""}
                         </div>
-                    `;
-                }
+                    </li>`;
+            }).join("");
+        }
 
-                // 2. Fetch Incidents Data
-                const incidentsRes = await fetch('/api/v1/incidents/?limit=1');
-                if (incidentsRes.ok) {
-                    const incidentsData = await incidentsRes.json();
-                    document.getElementById('total-incidents').textContent = incidentsData.total;
-                }
+        function renderTrace(trace) {
+            const el = document.getElementById("trace-logs");
+            if (!trace.length) {
+                el.innerHTML = '<div class="empty-state">Waiting for orchestrator trace…</div>';
+                return;
+            }
+            el.innerHTML = trace.map((line) => {
+                const m = line.match(/^(\d{2}:\d{2}:\d{2})\s+(.*)$/);
+                const ts = m ? m[1] : "";
+                const msg = m ? m[2] : line;
+                const cls = classifyLogLine(msg);
+                return `<div class="log-line ${cls}"><span class="ts">${ts}</span>${escapeHtml(msg)}</div>`;
+            }).join("");
 
-            } catch (error) {
-                console.error("Dashboard error:", error);
-                document.getElementById('system-health').textContent = 'OFFLINE';
-                document.getElementById('system-health').style.color = '#e74c3c';
-                document.getElementById('status-indicator').className = 'status-dot offline';
-                document.getElementById('health-checks').innerHTML = '';
+            if (trace.length > lastTraceLen) {
+                el.parentElement.scrollTop = el.parentElement.scrollHeight;
+                lastTraceLen = trace.length;
             }
         }
 
-        // Run immediately, then poll every 5 seconds
-        fetchDashboardData();
-        setInterval(fetchDashboardData, 5000);
+        function renderSidePanel(data) {
+            const el = document.getElementById("side-panel");
+            const logs = data.error_logs || [];
+            const conf = data.confidence != null ? Math.round(data.confidence * 100) : null;
+
+            let html = "<h4 style=\"margin:0 0 0.5rem;font-size:0.72rem;color:var(--muted);text-transform:uppercase;\">Incoming Error Logs</h4>";
+            if (logs.length) {
+                html += logs.map((l) => `<div class="input-log">${escapeHtml(l)}</div>`).join("");
+            } else {
+                html += '<div class="empty-state" style="padding:0.5rem;">No error logs on this incident.</div>';
+            }
+
+            html += '<div class="diag-block">';
+            html += "<h4>Diagnosis</h4>";
+            if (data.root_cause) {
+                if (conf != null) {
+                    html += `<div class="diag-text">Confidence: <strong>${conf}%</strong></div>`;
+                    html += `<div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%"></div></div>`;
+                }
+                html += `<div class="diag-text">${escapeHtml(data.root_cause)}</div>`;
+                if (data.from_cache) {
+                    html += '<div class="chunks-count">⚡ Served from pattern cache</div>';
+                }
+                if (data.cache_result) {
+                    html += `<div class="chunks-count">Cache: ${escapeHtml(data.cache_result)}</div>`;
+                }
+                if (data.code_context && data.code_context.length) {
+                    html += `<div class="chunks-count">${data.code_context.length} code chunk(s) retrieved</div>`;
+                }
+            } else {
+                html += '<div class="diag-text" style="color:var(--muted)">Diagnosis pending…</div>';
+            }
+            html += "</div>";
+
+            if (data.pr_url) {
+                html += `<a class="link-btn" href="${escapeHtml(data.pr_url)}" target="_blank" rel="noopener">View Pull Request →</a>`;
+            }
+            if (data.issue_url) {
+                html += `<a class="link-btn" href="${escapeHtml(data.issue_url)}" target="_blank" rel="noopener">View GitHub Issue →</a>`;
+            }
+
+            el.innerHTML = html;
+        }
+
+        function renderPills(data) {
+            const el = document.getElementById("incident-pills");
+            const prio = (data.resolved_priority || data.declared_priority || "").toLowerCase();
+            const status = data.status || "processing";
+            el.innerHTML = `
+                <span class="pill status-${status}"><strong>${status.replace(/_/g, " ")}</strong></span>
+                ${prio ? `<span class="pill ${prio}">${prio} priority</span>` : ""}
+                ${data.service ? `<span class="pill">${escapeHtml(data.service)}</span>` : ""}
+            `;
+        }
+
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        async function fetchHealth() {
+            try {
+                const res = await fetch("/api/v1/health");
+                const data = await res.json();
+                const dot = document.getElementById("status-indicator");
+                const label = document.getElementById("health-label");
+                dot.className = "status-dot" + (data.status === "ok" ? "" : " degraded");
+                label.innerHTML = `<span class="badge ${data.status === "ok" ? "ok" : "degraded"}">${data.status}</span>`;
+            } catch {
+                document.getElementById("status-indicator").className = "status-dot offline";
+                document.getElementById("health-label").textContent = "offline";
+            }
+        }
+
+        async function fetchIncidentList() {
+            const res = await fetch("/api/v1/incidents/?limit=20");
+            if (!res.ok) return;
+            const data = await res.json();
+            document.getElementById("incident-count").textContent =
+                `${data.total} incident${data.total === 1 ? "" : "s"}`;
+
+            const sel = document.getElementById("incident-select");
+            const prev = sel.value;
+            const options = data.incidents.map((inc) => {
+                const label = `${inc.incident_id.slice(0, 14)}… · ${inc.status} · ${inc.service || "?"}`;
+                return `<option value="${inc.incident_id}">${escapeHtml(label)}</option>`;
+            });
+            sel.innerHTML =
+                '<option value="">— select incident —</option>' + options.join("");
+
+            if (prev && data.incidents.some((i) => i.incident_id === prev)) {
+                sel.value = prev;
+            } else if (data.incidents.length && !selectedId) {
+                sel.value = data.incidents[0].incident_id;
+                selectedId = data.incidents[0].incident_id;
+            } else if (sel.value) {
+                selectedId = sel.value;
+            }
+        }
+
+        async function fetchIncidentDetail(id) {
+            if (!id) return;
+            const res = await fetch(`/api/v1/incidents/${id}/diagnosis`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const states = computeStepStates(data.trace || [], data.status);
+            renderSteps(states);
+            renderTrace(data.trace || []);
+            renderSidePanel(data);
+            renderPills(data);
+            schedulePoll(data.status);
+        }
+
+        function schedulePoll(status) {
+            clearInterval(pollTimer);
+            const ms = TERMINAL_STATUSES.has(status) ? 8000 : 1500;
+            pollTimer = setInterval(() => {
+                if (selectedId) fetchIncidentDetail(selectedId);
+            }, ms);
+        }
+
+        document.getElementById("incident-select").addEventListener("change", (e) => {
+            selectedId = e.target.value || null;
+            lastTraceLen = 0;
+            if (selectedId) fetchIncidentDetail(selectedId);
+        });
+
+        async function tick() {
+            await fetchHealth();
+            await fetchIncidentList();
+            const sel = document.getElementById("incident-select");
+            if (sel.value) {
+                selectedId = sel.value;
+                await fetchIncidentDetail(selectedId);
+            }
+        }
+
+        tick();
+        setInterval(tick, 5000);
     </script>
 </body>
 </html>

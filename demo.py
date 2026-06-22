@@ -9,9 +9,12 @@ from __future__ import annotations
 import sys
 import time
 
+import os
+
 import httpx
 
-BASE = "http://localhost:8001/api/v1"
+_PORT = os.environ.get("KRONOS_PORT", "8001")
+BASE = f"http://localhost:{_PORT}/api/v1"
 
 INCIDENT = {
     "error_logs": [
@@ -52,7 +55,7 @@ if __name__ == "__main__":
     try:
         httpx.get(f"{BASE}/health", timeout=5)
     except httpx.HTTPError:
-        print("Server not reachable at localhost:8000. Run `python main.py` first.")
+        print(f"Server not reachable at localhost:{_PORT}. Run `python main.py` first.")
         sys.exit(1)
 
     print("=== First occurrence (full path) ===")

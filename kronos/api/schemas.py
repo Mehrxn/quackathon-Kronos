@@ -54,11 +54,18 @@ class IncidentListResponse(BaseModel):
 
 class DiagnosisResponse(BaseModel):
     incident_id: str
+    status: str = "processing"
+    service: str = ""
     root_cause: Optional[str] = None
     confidence: Optional[float] = None
     reasoning: Optional[str] = None
     proposed_test: Optional[str] = None
     resolved_priority: Optional[str] = None
+    declared_priority: Optional[str] = None
     from_cache: bool = False
+    cache_result: Optional[str] = None
+    pr_url: Optional[str] = None
+    issue_url: Optional[str] = None
+    error_logs: list[str] = Field(default_factory=list)
     code_context: list[dict] = Field(default_factory=list)
     trace: list[str] = Field(default_factory=list)

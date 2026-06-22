@@ -21,6 +21,7 @@ from kronos.api.schemas import (
 )
 from kronos.config import Config, load_config
 from kronos.integrations.github_client import GitHubClient
+from kronos.integrations.notifications import NotificationEvent
 from kronos.logging_setup import setup_logging
 from kronos.models import Incident, IncidentStatus, Priority
 
@@ -153,6 +154,8 @@ async def get_diagnosis(incident_id: str):
     d = inc.diagnosis
     return DiagnosisResponse(
         incident_id=incident_id,
+        status=inc.status.value,
+        service=inc.service,
         root_cause=d.root_cause if d else None,
         confidence=d.confidence if d else None,
         reasoning=d.reasoning if d else None,
@@ -160,7 +163,14 @@ async def get_diagnosis(incident_id: str):
         resolved_priority=(
             inc.resolved_priority.value if inc.resolved_priority else None
         ),
+        declared_priority=(
+            inc.declared_priority.value if inc.declared_priority else None
+        ),
         from_cache=d.from_cache if d else False,
+        cache_result=inc.cache_result,
+        pr_url=inc.pr_url,
+        issue_url=inc.issue_url,
+        error_logs=inc.error_logs,
         code_context=[c.model_dump() for c in inc.chunks],
         trace=inc.trace,
     )
@@ -186,6 +196,7 @@ async def ignore(incident_id: str):
     inc.status = IncidentStatus.IGNORED
     inc.log("Ignored by operator")
     _store().update(inc)
+    await _orchestrator().notifier.notify(inc, NotificationEvent.IGNORED)
     return {"incident_id": incident_id, "status": "ignored"}
 
 
@@ -193,14 +204,27 @@ async def ignore(incident_id: str):
 async def health():
     cfg = _config()
     gh = GitHubClient(cfg)
+    notifier = _orchestrator().notifier
+    notify_channels = notifier.configured_channels()
     checks = {
         "github": bool(gh.token),
         "loki": bool(cfg.loki.get("url")),
         "gemini": bool(cfg.claude.get("api_key")),
         "parcle": bool(cfg.parcle.get("api_key")),
+        "notifications": {
+            "enabled": notifier.enabled,
+            "slack": notify_channels["slack"],
+            "email": notify_channels["email"],
+        },
     }
-    ok = all(checks.values())
-    return {"status": "ok" if ok else "degraded", "checks": checks, "time": time.time()}
+    core_ok = all(
+        checks[k] for k in ("github", "loki", "gemini", "parcle") if k in checks
+    )
+    return {
+        "status": "ok" if core_ok else "degraded",
+        "checks": checks,
+        "time": time.time(),
+    }
 
 
 @app.get("/api/v1/rules")

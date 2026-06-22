@@ -109,3 +109,34 @@ logging:
   level: "INFO"
   file: "logs/kronos.log"
   json_format: true
+
+# Optional: notify devs on Slack and/or email during incident lifecycle.
+# Set enabled: true and configure at least one channel.
+notifications:
+  enabled: false
+  dashboard_url: "http://localhost:8000/dashboard"
+  min_priority: "low"          # low | medium | high — skip alerts below this
+  events:
+    - incident_started
+    - diagnosis_complete
+    - fixing
+    - pr_opened
+    - issue_opened
+    - failed
+    - resolved
+    - ignored
+  slack:
+    enabled: false
+    webhook_url: ""              # paste URL or use "${SLACK_WEBHOOK_URL}"
+    mention: ""                  # e.g. "<!channel>" or "<@U123ABC>"
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    use_tls: true
+    smtp_user: ""                # or "${SMTP_USER}"
+    smtp_password: ""            # or "${SMTP_PASSWORD}"
+    from_address: "kronos@yourcompany.com"
+    to_addresses:
+      - "dev-team@yourcompany.com"
+      - "oncall@yourcompany.com"

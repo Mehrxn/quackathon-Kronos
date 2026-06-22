@@ -1,0 +1,37 @@
+# Eulix Configuration
+
+[project]
+  path = "/home/dawu/Nurysso/codes/gitHub/tam/quackathon-Kronos"
+  Max_Lines = 500
+  DebugConfig = false
+
+[parser]
+  threads = 4
+
+[embeddings]
+  model = "BAAI/bge-base-en-v1.5"
+  dimension = 768
+
+[llm]
+  local = true
+  provider = "ollama"
+  model       = "qwen2.5-coder:7b"
+  api_key = ""
+  max_tokens = 40000
+  temperature = 0.7
+  baseURL = "http://localhost:11434"
+  endpoint = ""
+
+[cache]
+  [cache.redis]
+    enabled = false
+    url = "redis://localhost:6379"
+    ttl_hours = 6
+  [cache.sql]
+    enabled = true
+    driver = "sqlite"
+    dsn = ".eulix/history.db"
+
+[checksum]
+  change_threshold = 0.1
+  force_reanalyze_threshold = 0.3

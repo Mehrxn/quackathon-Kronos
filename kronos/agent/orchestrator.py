@@ -19,9 +19,11 @@ from kronos.agent.decision import Action, DecisionEngine
 from kronos.agent.runner import CommandRunner
 from kronos.config import Config
 from kronos.integrations import (
+    DevNotifier,
     Diagnoser,
     GitHubClient,
     LokiClient,
+    NotificationEvent,
     ParcleClient,
     PatternCache,
 )
@@ -45,6 +47,7 @@ class Orchestrator:
         self.github = GitHubClient(config)
         self.decision = DecisionEngine(config)
         self.runner = CommandRunner(config)
+        self.notifier = DevNotifier(config)
         self.max_retries = config.autonomy.get("max_generation_retries", 3)
         self.approval_timeout = config.autonomy.get("approval_timeout", 3600)
         self.approval_interval = config.autonomy.get("approval_poll_interval", 30)
@@ -54,6 +57,7 @@ class Orchestrator:
         await self.parcle.close()
         await self.diagnoser.close()
         await self.loki.close()
+        await self.notifier.close()
 
     async def run(self, incident: Incident, *, fetch_loki: bool = True) -> None:
         try:
@@ -64,6 +68,9 @@ class Orchestrator:
             incident.error = str(e)
             incident.log(f"FAILED: {e}")
             self.store.update(incident)
+            await self.notifier.notify(
+                incident, NotificationEvent.FAILED, detail=str(e)
+            )
 
     async def _run_inner(self, incident: Incident, *, fetch_loki: bool) -> None:
         # Step 3: sync repo
@@ -80,7 +87,12 @@ class Orchestrator:
             incident.status = IncidentStatus.FAILED
             incident.error = "no logs"
             self.store.update(incident)
+            await self.notifier.notify(
+                incident, NotificationEvent.FAILED, detail="no logs available"
+            )
             return
+
+        await self.notifier.notify(incident, NotificationEvent.INCIDENT_STARTED)
 
         # Parse errors
         patterns = self.parser.parse(logs)
@@ -152,6 +164,7 @@ class Orchestrator:
             )
 
         incident.diagnosis = diagnosis
+        await self.notifier.notify(incident, NotificationEvent.DIAGNOSIS_COMPLETE)
 
         # Step 9: confirmation test
         test_reproduced: Optional[bool] = None
@@ -198,6 +211,7 @@ class Orchestrator:
 
     async def _auto_fix_path(self, incident: Incident, diagnosis: Diagnosis) -> None:
         incident.status = IncidentStatus.FIXING
+        await self.notifier.notify(incident, NotificationEvent.FIXING)
         ts = time.strftime("%Y%m%d-%H%M%S")
         branch = f"kronos/fix-{incident.incident_id[:8]}-{ts}"
         self.github.create_branch(branch)
@@ -263,8 +277,10 @@ class Orchestrator:
             incident.pr_url = pr_url
             incident.status = IncidentStatus.PR_OPENED
             incident.log(f"PR opened: {pr_url}")
+            await self.notifier.notify(incident, NotificationEvent.PR_OPENED)
         else:
             incident.status = IncidentStatus.RESOLVED
+            await self.notifier.notify(incident, NotificationEvent.RESOLVED)
 
     async def _issue_path(
         self, incident: Incident, diagnosis: Diagnosis, reason: str
@@ -276,6 +292,9 @@ class Orchestrator:
         incident.issue_url = url
         incident.status = IncidentStatus.ISSUE_OPENED
         incident.log(f"Issue opened: {url}")
+        await self.notifier.notify(
+            incident, NotificationEvent.ISSUE_OPENED, detail=reason
+        )
 
         # Step 12: poll for @agent: fix / ignore
         if url:
@@ -293,6 +312,7 @@ class Orchestrator:
                 await self._auto_fix_path(incident, diagnosis)
             elif decision == "ignore":
                 incident.status = IncidentStatus.IGNORED
+                await self.notifier.notify(incident, NotificationEvent.IGNORED)
 
     async def _learn(self, incident: Incident, diagnosis: Diagnosis) -> None:
         if not incident.fingerprint:
@@ -317,7 +337,10 @@ class Orchestrator:
         )
         incident.log("Recorded incident + rule in Parcle memory")
         if incident.status not in (IncidentStatus.FAILED, IncidentStatus.IGNORED):
+            prev = incident.status
             incident.status = IncidentStatus.RESOLVED
+            if prev not in (IncidentStatus.PR_OPENED, IncidentStatus.ISSUE_OPENED):
+                await self.notifier.notify(incident, NotificationEvent.RESOLVED)
 
     def _pr_body(self, incident: Incident, d: Diagnosis) -> str:
         return (

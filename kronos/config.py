@@ -108,6 +108,10 @@ class Config:
     def pattern_cache(self) -> dict:
         return self.raw["pattern_cache"]
 
+    @property
+    def notifications(self) -> dict:
+        return self.raw.get("notifications", {})
+
 
 _REQUIRED_SECTIONS = [
     "repository",
