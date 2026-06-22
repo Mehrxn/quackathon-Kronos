@@ -1,8 +1,14 @@
-"""Phase 1 — Error Parsing.
+"""traceGrep Phase 1: Error Parsing.
 
-Map raw Loki log lines to structured ErrorPattern objects via a regex
-library, extract the function name preceding the error, deduplicate on
-(function, error_type), and tag each with a priority hint.
+Map raw log lines to structured ErrorPattern objects using a regex library
+of known error phrasings (nil pointer, OOM, goroutine leak, deadlock, etc.).
+Each matched line is classified into an error_type with a seed keyword list;
+the function name that precedes the error is extracted via Go stack-frame
+patterns (`pkg.(*Type).Method(`) or a generic `identifier:` heuristic.
+Patterns are deduplicated on (function, error_type) and enriched with a
+priority hint derived from config rules.
+
+No AST, no embeddings — pure regex over raw log text.
 """
 
 from __future__ import annotations

@@ -1,11 +1,21 @@
-"""Phase 2 & 3 — Parallel Grep Search + Streaming Context Extraction.
+"""TraceGrep Phase 2 & 3: Parallel Grep Search + Context Extraction.
 
-- Error-type-aware scoring: chunks containing the exact error keyword score higher
-- Call-depth expansion: callers of callers retrieved one level deep
-- Import/dependency extraction: surfaces modules imported by matched files
-- Dedup by content hash before returning, preventing duplicate context
-- Scored keyword search: keywords weighted by position in error pattern list
-- Per-file chunk cap to prevent one hot file from monopolising the budget
+For each ErrorPattern, concurrently search the source tree using pure regex
+grep (no AST, no embeddings):
+
+  - Definitions:  locate the function declaration by regex, then read forward
+                  tracking brace depth to collect the full body (capped at
+                  max_function_lines).
+  - Callers:      find call sites with a two-level depth expansion — direct
+                  callers, then callers of those callers — via fixed line
+                  windows (before/after).
+  - Keywords:     weighted grep of error-pattern keywords; earlier keywords in
+                  the pattern list score higher.
+  - Imports:      surface the import block of every file that yielded a
+                  definition hit, for dependency context.
+
+Per-file chunk caps prevent a single hot file from monopolising the budget.
+All chunks are deduplicated by content hash before returning.
 """
 
 from __future__ import annotations

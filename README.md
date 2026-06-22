@@ -22,7 +22,9 @@ Kronos is an autonomous SRE agent built for the hackathon. It plugs into your ex
 
 ## How it works
 
-```
+> works with any dashboard as long as krons recieves the logs via `GET`
+
+```bash
 Grafana alert / webhook
         ↓
   Parse error logs → extract function names + error types
@@ -47,13 +49,34 @@ Grafana alert / webhook
   Learn: write rule back to Parcle for next time
 ```
 
-### Retrieval pipeline (accurate chunks, minimal noise)
+### traceGrep — retrieval pipeline (accurate chunks, minimal noise)
 
-1. **Error parsing** — regex library maps known phrasings to `error_type` + keywords; extracts the function before the colon; dedups on `(function, error_type)`; tags priority hints. (`kronos/retrieval/parser.py`)
-2. **Parallel grep** — per pattern, concurrently grep definitions, call sites, and keyword fallbacks across a worker pool; call-depth expansion and import surfacing. (`kronos/retrieval/retriever.py`)
-3. **Streaming extraction** — read definitions forward by brace depth (capped); callers and keywords by fixed windows; strip comments, collapse blanks.
-4. **Dedup & ranking** — merge overlapping ranges; score def 1.0 / caller 0.8 / keyword 0.6; boost error-type terms and git recency. (`kronos/retrieval/assembler.py`)
-5. **Budgeted assembly** — split token budget across error logs, definitions, callers, keywords, and recent git changes; soft-truncate oversized chunks instead of dropping them silently.
+No AST parsing. No embeddings. Pure regex grep over source text.
+
+1. **Error parsing** — regex library maps known phrasings to `error_type` + seed
+   keywords; Go stack-frame and `identifier:` heuristics extract the erroring
+   function; dedups on `(function, error_type)`; tags priority hints from config
+   rules. (`kronos/retrieval/parser.py`)
+
+2. **Parallel grep** — per `ErrorPattern`, concurrently grep definitions (regex
+   match on function declaration), call sites (depth-2 caller expansion), and
+   keyword fallbacks across a worker pool; surfaces the import block of every
+   file that yielded a definition hit. (`kronos/retrieval/retriever.py`)
+
+3. **Context extraction** — definitions read forward by brace depth (capped at
+   `max_function_lines`); callers and keywords by fixed before/after windows;
+   comments stripped, blank runs collapsed; per-file chunk cap enforced;
+   content-hash dedup applied before returning.
+
+4. **Ranking** — overlapping ranges merged (higher score wins, range widened);
+   cross-pattern keyword aggregation (+0.2 cap); error-function boost (+0.15)
+   and high-priority boost (+0.10); git recency normalised into score (+0.05
+   max). (`kronos/retrieval/assembler.py`)
+
+5. **Budgeted assembly** — token budget split across error logs, definitions,
+   callers, keywords, and recent git changes; erroring-function definitions
+   pinned first; oversized chunks soft-truncated instead of silently dropped;
+   section headers include file paths for LLM orientation.
 
 ### Fix vs. issue — you control the blast radius
 
@@ -73,14 +96,20 @@ Fingerprint = `alert_type + sorted functions + error types`. Exact match → use
 
 ---
 
-## Quick start
+## Quick start (hackathon demo)
+
+> [!IMPORTANT]
+> I have no fing clue about windows and ps1 and we did our best to
+> make sure the code runs same on windows/linux.
+> Know issue is with ps1 where it fails to read .env use enterPro to find command to fix it
+> "Crazy_hand_gesture.gif"
 
 ### 1. Install
 
 ```bash
 git clone https://github.com/Nurysso/quackathon-Kronos.git
 cd quackathon-Kronos
-uv pip install -r requirements.txt
+docker-compose up -d
 ```
 
 ### 2. Configure
@@ -92,9 +121,14 @@ cp config.yaml.example config.yaml
 set -a && source .env && set +a
 ```
 
-### 3. Run
+> (if not running it with docker)
+
+### 1. isntall uv and venv
+
+`WhyVenv you might ask, compatiblity`
 
 ```bash
+uv venv .venv --python 311
 uv run main.py                # API + dashboard on :8000 or whatever you kept in .env
 ```
 
@@ -102,7 +136,12 @@ Open **http://localhost:8000/dashboard** for the live incident board.
 Open **http://localhost:8000/api/docs** for api documentaion [Swagger UI]
 Open **http://localhost:8000/api/redocs** for redoc styled documentaion.
 
-### 4. Demo (two terminals)
+> if running via docker, note port can change based on system run docker ps to find port and check .env
+> http://127.0.0.1:8000/dashboard
+> http://127.0.0.1:8000/api/redoc
+> http://127.0.0.1:8000/api/doc
+
+### 4. Demo (if not running via docker)
 
 ```bash
 # Terminal 1
@@ -118,16 +157,21 @@ uv run demo.py
 
 ---
 
-## Observability stack (optional full demo)
+### Demo when using Docker
+
+edit config.yaml and set in your repo url and local path
+
+open up grafana dashboard http://localhost:3001 and frontend http://localhost:8080/ (or what ever port your docker runs it on)
+
+- Grafana: default uname and paswd (admin/admin)
+- Wire Grafana alerting contact point new contact point webhook → `POST http://localhost:8000/api/v1/init/`
+- Set notifical policy to webhook instead of default
+
+> `triggers alerts via frontend, and let kronos take control`
 
 The `dummyproj/` folder includes a complete Grafana + Prometheus + Loki + dummy backend for end-to-end alerting:
 
-```bash
-cd dummyproj && docker-compose up -d
-```
-
-- Grafana: http://localhost:3001 (admin/admin)
-- Wire Grafana alerting webhook → `POST http://localhost:8000/api/v1/init/`
+## Observability stack (optional full demo)
 
 ---
 

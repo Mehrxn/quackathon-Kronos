@@ -1,10 +1,24 @@
-"""Phase 4 & 5 — Deduplication & Ranking, then Budgeted Assembly.
+"""traceGrep Phase 4 & 5: Deduplication, Ranking & Budgeted Assembly.
 
-- Cross-pattern score aggregation: a chunk matched by multiple patterns scores higher
-- Soft token cap per chunk: oversized chunks are truncated rather than dropped
-- Error-type ordering: definitions of the erroring function always lead the context
-- Git recency weighted into score (not just tiebreak)
-- Section headers include file paths for LLM orientation
+Takes the raw chunk pool from the grep phase and produces a single,
+token-budgeted context string:
+
+  Phase 4 — Ranking:
+    - Overlapping ranges in the same file are merged (higher score wins).
+    - Cross-pattern score aggregation: chunks that satisfy multiple error
+      keywords score higher (up to +0.2).
+    - Error-function boost (+0.15) for functions directly named in a pattern;
+      high-priority-hint boost (+0.10) for config-flagged functions.
+    - Git recency weighted into score (normalised to +0.05).
+
+  Phase 5 — Assembly:
+    - Token budget split across five sections: error logs, definitions,
+      callers, keywords, recent git changes.
+    - Definitions of the erroring function are pinned to the top of their
+      section regardless of score.
+    - Oversized chunks are soft-truncated to the remaining budget rather than
+      silently dropped.
+    - Section headers carry file paths for LLM orientation.
 """
 
 from __future__ import annotations
