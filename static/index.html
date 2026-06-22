@@ -1,37 +1,55 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Kronos | Autonomous Incident Response</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="topbar">
       <a class="brand" href="#overview" aria-label="Kronos home">
-        <img src="/static/Kronos.png" alt="Kronos logo">
+        <span class="brand-name">Kronos</span>
       </a>
       <nav class="topnav" aria-label="Primary navigation">
         <a href="#overview">Overview</a>
         <a href="#features">Capabilities</a>
         <a href="#workflow">Workflow</a>
-        <a href="#console">Console</a>
-        <a href="#health">Health</a>
+        <a
+          href="https://github.com/Mehrxn/quackathon-Kronos"
+          target="_blank"
+          rel="noopener"
+          class="gh-link"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.004.07 1.532 1.032 1.532 1.032.891 1.528 2.341 1.087 2.91.831.091-.646.349-1.087.635-1.337-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"
+            />
+          </svg>
+          GitHub
+        </a>
       </nav>
-      <a class="cta-button" href="#console">Launch</a>
+      <a class="cta-button" href="#workflow">See Workflow</a>
     </header>
 
     <main class="page-shell">
       <section id="overview" class="hero-panel">
         <div class="hero-copy">
           <p class="eyebrow">Autonomous incident response</p>
-          <h1>From alert to resolution with a calm, modern operations console.</h1>
+          <h1>From alert to resolution — before your pager stops buzzing.</h1>
           <p class="lede">
-            Kronos ingests Grafana and manual alerts, retrieves the right code context,
-            diagnoses the root cause, validates it, and either opens a PR or escalates an issue.
+            Kronos ingests Grafana and manual alerts, retrieves the right code context, diagnoses
+            the root cause, validates it, and either opens a PR or escalates an issue —
+            autonomously.
           </p>
           <div class="hero-actions">
-            <a class="primary-button" href="#console">Open Console</a>
+            <a
+              class="primary-button"
+              href="https://github.com/Nurysso/quackathon-Kronos"
+              target="_blank"
+              rel="noopener"
+              >View on GitHub</a
+            >
             <a class="secondary-button" href="#workflow">See Workflow</a>
           </div>
         </div>
@@ -45,13 +63,13 @@
             <p>Parse errors, retrieve relevant code, and build tight LLM context automatically.</p>
           </div>
           <div class="hero-card">
-            <strong>Priority-aware</strong>
-            <p>Auto-fix high-priority issues while routing lower-risk cases for review.</p>
+            <strong>Priority-aware routing</strong>
+            <p>Auto-fix high-priority issues while routing lower-risk cases for human review.</p>
           </div>
         </div>
       </section>
 
-      <section id="features" class="section feature-grid">
+      <section id="features" class="section">
         <div class="section-heading">
           <p class="eyebrow">Capabilities</p>
           <h2>A clean control layer for incident response.</h2>
@@ -59,24 +77,36 @@
         <div class="feature-list">
           <article>
             <h3>Fast alert ingestion</h3>
-            <p>Receive Grafana webhooks or manual triggers and turn them into managed incidents.</p>
+            <p>
+              Receive Grafana webhooks or manual triggers and turn them into managed incidents
+              instantly.
+            </p>
           </article>
           <article>
             <h3>Context-focused retrieval</h3>
-            <p>Locate the right source code and error patterns before the diagnosis step.</p>
+            <p>
+              Locate the right source code and error patterns before the diagnosis step — no
+              embeddings, no AST.
+            </p>
           </article>
           <article>
             <h3>Automated diagnosis</h3>
-            <p>Use a single-chain diagnosis loop with confidence scoring and test validation.</p>
+            <p>
+              Single chain-of-thought diagnosis loop with confidence scoring and test validation
+              before any action.
+            </p>
           </article>
           <article>
             <h3>Fix or escalate</h3>
-            <p>Decide between auto-fix, PR creation, or issue escalation using configurable rules.</p>
+            <p>
+              Decide between auto-fix PR creation or issue escalation using a configurable decision
+              matrix.
+            </p>
           </article>
         </div>
       </section>
 
-      <section id="workflow" class="section workflow-grid">
+      <section id="workflow" class="section">
         <div class="section-heading">
           <p class="eyebrow">Workflow</p>
           <h2>How Kronos moves from failure to action.</h2>
@@ -95,7 +125,9 @@
           <article>
             <span>03</span>
             <h3>Diagnose</h3>
-            <p>LLM diagnosis with root cause, explained reasoning, and a proposed reproduction test.</p>
+            <p>
+              LLM diagnosis with root cause, explained reasoning, and a proposed reproduction test.
+            </p>
           </article>
           <article>
             <span>04</span>
@@ -105,141 +137,36 @@
         </div>
       </section>
 
-      <section id="console" class="section console-layout">
-        <div class="panel">
-          <div class="panel-heading">
-            <p class="eyebrow">Manual trigger</p>
-            <h2>Quick incident</h2>
-          </div>
-          <form id="quickForm" class="form">
-            <label>
-              Service
-              <input name="service" value="checkout-service" required>
-            </label>
-            <label>
-              Priority
-              <select name="priority">
-                <option value="">Auto detect</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </label>
-            <label class="span-all">
-              Error logs
-              <textarea name="error_logs" rows="7" required>processOrder: index out of range [5] with length 3
-fatal: handleRequest: nil pointer dereference</textarea>
-            </label>
-            <button class="primary-button" type="submit">Create Quick Incident</button>
-          </form>
-        </div>
-
-        <div class="panel">
-          <div class="panel-heading">
-            <p class="eyebrow">Webhook simulator</p>
-            <h2>Grafana init</h2>
-          </div>
-          <form id="initForm" class="form">
-            <label>
-              Service
-              <input name="service" value="payments-api">
-            </label>
-            <label>
-              Instance
-              <input name="instance" value="pod-17">
-            </label>
-            <label>
-              Priority
-              <select name="priority">
-                <option value="">Auto detect</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </label>
-            <label class="span-all">
-              Loki logs
-              <textarea name="loki_logs" rows="5">panic: runtime error in worker
-dbConnect: connection pool exhausted</textarea>
-            </label>
-            <button class="secondary-button" type="submit">Send Webhook</button>
-          </form>
-        </div>
-      </section>
-
-      <section id="incidents" class="section">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">Live operations</p>
-            <h2>Incidents</h2>
-          </div>
-          <div class="filters">
-            <select id="statusFilter" aria-label="Filter status">
-              <option value="">All statuses</option>
-              <option value="processing">Processing</option>
-              <option value="diagnosing">Diagnosing</option>
-              <option value="awaiting_approval">Awaiting approval</option>
-              <option value="fixing">Fixing</option>
-              <option value="pr_opened">PR opened</option>
-              <option value="issue_opened">Issue opened</option>
-              <option value="resolved">Resolved</option>
-              <option value="failed">Failed</option>
-              <option value="ignored">Ignored</option>
-            </select>
-            <select id="priorityFilter" aria-label="Filter priority">
-              <option value="">All priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <button class="secondary-button" id="refreshIncidents" type="button">Refresh</button>
-          </div>
-        </div>
-        <div id="incidentList" class="incident-list" aria-live="polite"></div>
-      </section>
-
-      <section id="diagnosis" class="section diagnosis-layout">
-        <div class="panel">
-          <div class="panel-heading">
-            <p class="eyebrow">Inspect</p>
-            <h2>Diagnosis</h2>
-          </div>
-          <form id="diagnosisForm" class="lookup">
-            <input id="diagnosisId" name="incident_id" placeholder="incident id">
-            <button class="secondary-button" type="submit">Load diagnosis</button>
-          </form>
-          <div class="action-row">
-            <button id="approveBtn" class="primary-button" type="button" disabled>Approve Fix</button>
-            <button id="ignoreBtn" class="danger-button" type="button" disabled>Ignore</button>
-          </div>
-        </div>
-        <div id="diagnosisOutput" class="code-panel">Select an incident to inspect diagnosis, context, and trace.</div>
-      </section>
-
-      <section id="health" class="section status-grid">
-        <div class="panel">
-          <div class="panel-heading">
-            <p class="eyebrow">System</p>
-            <h2>Health</h2>
-          </div>
-          <div id="healthOutput" class="status-list"></div>
-        </div>
-        <div id="rules" class="panel">
-          <div class="panel-heading">
-            <p class="eyebrow">Decision matrix</p>
-            <h2>Rules</h2>
-          </div>
-          <div id="rulesOutput" class="code-panel small">Loading rules...</div>
-        </div>
-      </section>
-
       <footer class="footer">
-        <p>Built for safe incident response workflows — inspired by modern AI memory platforms.</p>
+        <p class="footer-team-label">Built at Quackathon by</p>
+        <p class="footer-team-name">WhyVenv</p>
+        <div class="footer-members">
+          <span class="member-chip">Nurysso(Dawood) </span>
+          <span class="member-chip">Ibrahim</span>
+          <span class="member-chip">Mehran</span>
+          <span class="member-chip">emaad</span>
+          <span class="member-chip">omair</span>
+          <span class="member-chip">zain</span>
+        </div>
+        <p class="footer-copy">
+          Thanks to <strong>Produck</strong> for organizing Quackathon, and to
+          <strong>EnterPro</strong> &amp; <strong>Parcle</strong> for the free API access that made
+          this possible.
+        </p>
+        <a
+          class="footer-gh"
+          href="https://github.com/Mehrxn/quackathon-Kronos"
+          target="_blank"
+          rel="noopener"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.004.07 1.532 1.032 1.532 1.032.891 1.528 2.341 1.087 2.91.831.091-.646.349-1.087.635-1.337-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"
+            />
+          </svg>
+          github.com/Mehrxn/quackathon-Kronos
+        </a>
       </footer>
-
-      <div id="toast" class="toast" role="status" aria-live="polite"></div>
     </main>
-
-    <script src="/static/app.js"></script>
   </body>
 </html>
